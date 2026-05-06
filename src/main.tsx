@@ -1,6 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { initTelegramFullscreen } from "./telegram";
 import App from "./App";
+
+initTelegramFullscreen();
 
 const rootElement = document.getElementById("root");
 

@@ -35,7 +35,13 @@ import {
   upgradeCreature,
 } from "./game";
 import { loadGameState, resetGameState, saveGameState } from "./storage";
-import { getTelegramStartParam, getTelegramViewportState, haptic, initTelegram, shareTelegramInvite } from "./telegram";
+import {
+  getTelegramStartParam,
+  getTelegramViewportState,
+  haptic,
+  initTelegramFullscreen,
+  shareTelegramInvite,
+} from "./telegram";
 import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService";
 import { getCurrentPlayer, isTelegramEnvironment } from "./services/authService";
 import { buildCreatureMetadata, mockMintCreature } from "./services/nftService";
@@ -412,7 +418,7 @@ export default function App() {
       return;
     }
     didInitRef.current = true;
-    initTelegram();
+    initTelegramFullscreen();
     track("app_open", { telegram: player.isTelegram });
     try {
       const loaded = calculateOfflineIncome(loadGameState());
@@ -1156,6 +1162,9 @@ export default function App() {
                 <StatPill label="Player id" value={player.id} />
                 <StatPill label="Telegram" value={isTelegramEnvironment() ? "Yes" : "No"} />
                 <StatPill label="Platform" value={telegramViewport.platform} />
+                <StatPill label="Window h" value={`${telegramViewport.windowInnerHeight}px`} />
+                <StatPill label="Client h" value={`${telegramViewport.documentElementClientHeight}px`} />
+                <StatPill label="App h" value={telegramViewport.appHeight || "Unknown"} />
                 <StatPill
                   label="Viewport"
                   value={telegramViewport.viewportHeight ? `${Math.round(telegramViewport.viewportHeight)}px` : "Browser"}

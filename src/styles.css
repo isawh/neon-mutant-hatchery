@@ -20,6 +20,7 @@
   --tg-viewport-stable-height: 100dvh;
   --tg-safe-area-top: 0px;
   --tg-safe-area-bottom: 0px;
+  --app-height: 100dvh;
 }
 
 * {
@@ -31,11 +32,10 @@ body,
 #root {
   width: 100vw;
   min-width: 100vw;
-  height: 100dvh;
-  height: var(--tg-viewport-height, 100dvh);
-  min-height: 100dvh;
-  min-height: var(--tg-viewport-height, 100dvh);
+  height: var(--app-height, 100dvh);
+  min-height: var(--app-height, 100dvh);
   margin: 0;
+  padding: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 16% 8%, rgba(29, 247, 255, 0.18), transparent 30%),
@@ -47,8 +47,7 @@ body,
 
 body {
   min-width: 100vw;
-  min-height: 100dvh;
-  min-height: var(--tg-viewport-height, 100dvh);
+  min-height: var(--app-height, 100dvh);
 }
 
 #root {
@@ -100,10 +99,11 @@ button:not(:disabled):active {
 .app-shell {
   width: 100vw;
   min-width: 100vw;
-  height: 100dvh;
-  height: var(--tg-viewport-height, 100dvh);
-  min-height: var(--tg-viewport-height, 100dvh);
-  max-height: var(--tg-viewport-height, 100dvh);
+  max-width: none;
+  height: var(--app-height, 100dvh);
+  min-height: var(--app-height, 100dvh);
+  max-height: var(--app-height, 100dvh);
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -115,6 +115,7 @@ button:not(:disabled):active {
   color: #f7fbff;
   overflow: hidden;
   opacity: 1;
+  border-radius: 0;
   position: relative;
   z-index: 1;
   transform: none;
@@ -126,8 +127,7 @@ button:not(:disabled):active {
 
 .root-fallback {
   width: 100vw;
-  min-height: 100dvh;
-  min-height: var(--tg-viewport-height, 100dvh);
+  min-height: var(--app-height, 100dvh);
   display: grid;
   place-items: center;
   align-content: center;
@@ -2228,7 +2228,7 @@ p {
 .creature-modal {
   position: relative;
   width: min(100%, 410px);
-  max-height: calc(var(--tg-viewport-height, 100dvh) - 34px);
+  max-height: calc(var(--app-height, 100dvh) - 34px);
   display: grid;
   justify-items: center;
   gap: 12px;
@@ -2930,13 +2930,5 @@ p {
   50% {
     transform: scale(1.06);
     filter: brightness(1.25);
-  }
-}
-
-@media (min-width: 700px) {
-  .app-shell {
-    width: min(100vw, 480px);
-    margin: 0 auto;
-    border-inline: 1px solid rgba(29, 247, 255, 0.14);
   }
 }

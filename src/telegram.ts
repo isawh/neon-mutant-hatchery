@@ -1,6 +1,7 @@
 type TelegramHapticStyle = "light" | "medium" | "heavy" | "rigid" | "soft";
 type TelegramNotificationType = "error" | "success" | "warning";
 type TelegramViewportHandler = (eventData?: { isStateStable?: boolean }) => void;
+type TelegramEventType = "viewportChanged" | "fullscreenChanged";
 
 type TelegramSafeAreaInset = {
   top?: number;
@@ -14,8 +15,8 @@ type TelegramWebApp = {
   expand?: () => void;
   requestFullscreen?: () => void;
   disableVerticalSwipes?: () => void;
-  onEvent?: (eventType: "viewportChanged", callback: TelegramViewportHandler) => void;
-  offEvent?: (eventType: "viewportChanged", callback: TelegramViewportHandler) => void;
+  onEvent?: (eventType: TelegramEventType, callback: TelegramViewportHandler) => void;
+  offEvent?: (eventType: TelegramEventType, callback: TelegramViewportHandler) => void;
   openTelegramLink?: (url: string) => void;
   viewportHeight?: number;
   viewportStableHeight?: number;
@@ -68,6 +69,9 @@ const safeCall = (call: () => void) => {
 export type TelegramViewportState = {
   viewportHeight: number | null;
   viewportStableHeight: number | null;
+  appHeight: string;
+  windowInnerHeight: number;
+  documentElementClientHeight: number;
   isFullscreen: boolean | null;
   isExpanded: boolean | null;
   platform: string;
@@ -75,9 +79,13 @@ export type TelegramViewportState = {
 
 export const getTelegramViewportState = (): TelegramViewportState => {
   const webApp = getWebApp();
+  const computedStyle = getComputedStyle(root());
   return {
     viewportHeight: typeof webApp?.viewportHeight === "number" ? webApp.viewportHeight : null,
     viewportStableHeight: typeof webApp?.viewportStableHeight === "number" ? webApp.viewportStableHeight : null,
+    appHeight: computedStyle.getPropertyValue("--app-height").trim() || `${window.innerHeight}px`,
+    windowInnerHeight: window.innerHeight,
+    documentElementClientHeight: root().clientHeight,
     isFullscreen: typeof webApp?.isFullscreen === "boolean" ? webApp.isFullscreen : null,
     isExpanded: typeof webApp?.isExpanded === "boolean" ? webApp.isExpanded : null,
     platform: webApp?.platform ?? "browser",
@@ -87,12 +95,15 @@ export const getTelegramViewportState = (): TelegramViewportState => {
 export const syncTelegramViewportCss = () => {
   const webApp = getWebApp();
   const documentRoot = root();
-  const viewportHeight = typeof webApp?.viewportHeight === "number" && webApp.viewportHeight > 0
-    ? `${webApp.viewportHeight}px`
-    : "100dvh";
-  const stableHeight = typeof webApp?.viewportStableHeight === "number" && webApp.viewportStableHeight > 0
-    ? `${webApp.viewportStableHeight}px`
-    : viewportHeight;
+  const fallbackHeight = `${Math.max(1, window.innerHeight || documentRoot.clientHeight)}px`;
+  const viewportHeight =
+    typeof webApp?.viewportHeight === "number" && webApp.viewportHeight > 0
+      ? `${webApp.viewportHeight}px`
+      : fallbackHeight;
+  const stableHeight =
+    typeof webApp?.viewportStableHeight === "number" && webApp.viewportStableHeight > 0
+      ? `${webApp.viewportStableHeight}px`
+      : viewportHeight;
   const safeAreaTop = `${getSafeAreaValue(webApp, "top")}px`;
   const safeAreaBottom = `${getSafeAreaValue(webApp, "bottom")}px`;
 
@@ -100,6 +111,7 @@ export const syncTelegramViewportCss = () => {
   documentRoot.style.setProperty("--tg-viewport-stable-height", stableHeight);
   documentRoot.style.setProperty("--tg-safe-area-top", safeAreaTop);
   documentRoot.style.setProperty("--tg-safe-area-bottom", safeAreaBottom);
+  documentRoot.style.setProperty("--app-height", viewportHeight);
 
   documentRoot.classList.toggle("tg-fullscreen", Boolean(webApp?.isFullscreen));
   documentRoot.classList.toggle("tg-expanded", Boolean(webApp?.isExpanded));
@@ -118,8 +130,28 @@ const expandFullscreen = () => {
   syncTelegramViewportCss();
 };
 
-export const initTelegram = () => {
+let telegramFullscreenInitialized = false;
+let windowViewportListenersInitialized = false;
+
+const handleViewportChanged: TelegramViewportHandler = () => {
+  syncTelegramViewportCss();
+  window.setTimeout(syncTelegramViewportCss, 40);
+};
+
+const handleWindowViewportChanged = () => {
+  handleViewportChanged();
+};
+
+export const initTelegramFullscreen = () => {
+  // Telegram may still reserve native top/bottom UI depending on launch method and client version,
+  // but the app requests and uses the maximum available viewport immediately.
   const webApp = getWebApp();
+  if (!windowViewportListenersInitialized) {
+    windowViewportListenersInitialized = true;
+    window.addEventListener("resize", handleWindowViewportChanged, { passive: true });
+    window.addEventListener("orientationchange", handleWindowViewportChanged, { passive: true });
+  }
+
   if (!webApp) {
     syncTelegramViewportCss();
     return;
@@ -129,17 +161,20 @@ export const initTelegram = () => {
   safeCall(() => webApp.disableVerticalSwipes?.());
   expandFullscreen();
 
-  [100, 500, 1200].forEach((delay) => {
+  [50, 150, 500, 1000, 2000].forEach((delay) => {
     window.setTimeout(expandFullscreen, delay);
   });
 
-  const handleViewportChanged: TelegramViewportHandler = () => {
-    syncTelegramViewportCss();
-    window.setTimeout(syncTelegramViewportCss, 40);
-  };
-
-  safeCall(() => webApp.onEvent?.("viewportChanged", handleViewportChanged));
+  if (!telegramFullscreenInitialized) {
+    telegramFullscreenInitialized = true;
+    safeCall(() => webApp.onEvent?.("viewportChanged", handleViewportChanged));
+    safeCall(() => webApp.onEvent?.("fullscreenChanged", handleViewportChanged));
+  }
 };
+
+export const initTelegram = initTelegramFullscreen;
+
+initTelegramFullscreen();
 
 export const haptic = {
   impact(style: TelegramHapticStyle = "light") {
