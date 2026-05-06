@@ -35,7 +35,7 @@ import {
   upgradeCreature,
 } from "./game";
 import { loadGameState, resetGameState, saveGameState } from "./storage";
-import { getTelegramStartParam, haptic, initTelegram, shareTelegramInvite } from "./telegram";
+import { getTelegramStartParam, getTelegramViewportState, haptic, initTelegram, shareTelegramInvite } from "./telegram";
 import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService";
 import { getCurrentPlayer, isTelegramEnvironment } from "./services/authService";
 import { buildCreatureMetadata, mockMintCreature } from "./services/nftService";
@@ -351,6 +351,7 @@ export default function App() {
   const pendingProduct = pendingProductId ? products.find((product) => product.id === pendingProductId) ?? null : null;
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
+  const telegramViewport = getTelegramViewportState();
   const totalSpecies = NAME_PREFIXES.length * NAME_SUFFIXES.length;
   const discoveredCount = new Set(state.discoveredCreatureNames).size;
   const undiscoveredCount = Math.max(0, totalSpecies - discoveredCount);
@@ -1154,6 +1155,27 @@ export default function App() {
                 <StatPill label="Mode" value={environmentMode} />
                 <StatPill label="Player id" value={player.id} />
                 <StatPill label="Telegram" value={isTelegramEnvironment() ? "Yes" : "No"} />
+                <StatPill label="Platform" value={telegramViewport.platform} />
+                <StatPill
+                  label="Viewport"
+                  value={telegramViewport.viewportHeight ? `${Math.round(telegramViewport.viewportHeight)}px` : "Browser"}
+                />
+                <StatPill
+                  label="Stable"
+                  value={
+                    telegramViewport.viewportStableHeight
+                      ? `${Math.round(telegramViewport.viewportStableHeight)}px`
+                      : "Browser"
+                  }
+                />
+                <StatPill
+                  label="Fullscreen"
+                  value={telegramViewport.isFullscreen === null ? "Unknown" : telegramViewport.isFullscreen ? "Yes" : "No"}
+                />
+                <StatPill
+                  label="Expanded"
+                  value={telegramViewport.isExpanded === null ? "Unknown" : telegramViewport.isExpanded ? "Yes" : "No"}
+                />
                 <StatPill label="Events" value={formatNumber(analyticsCount)} />
                 <StatPill label="Referral" value={state.referralCode || "Pending"} />
               </div>

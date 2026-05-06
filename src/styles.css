@@ -16,6 +16,10 @@
   --pink: #ff4fd8;
   --yellow: #f7f05a;
   --danger: #ff5b7c;
+  --tg-viewport-height: 100dvh;
+  --tg-viewport-stable-height: 100dvh;
+  --tg-safe-area-top: 0px;
+  --tg-safe-area-bottom: 0px;
 }
 
 * {
@@ -28,7 +32,9 @@ body,
   width: 100vw;
   min-width: 100vw;
   height: 100dvh;
+  height: var(--tg-viewport-height, 100dvh);
   min-height: 100dvh;
+  min-height: var(--tg-viewport-height, 100dvh);
   margin: 0;
   overflow: hidden;
   background:
@@ -42,6 +48,7 @@ body,
 body {
   min-width: 100vw;
   min-height: 100dvh;
+  min-height: var(--tg-viewport-height, 100dvh);
 }
 
 #root {
@@ -94,14 +101,16 @@ button:not(:disabled):active {
   width: 100vw;
   min-width: 100vw;
   height: 100dvh;
-  min-height: 100dvh;
+  height: var(--tg-viewport-height, 100dvh);
+  min-height: var(--tg-viewport-height, 100dvh);
+  max-height: var(--tg-viewport-height, 100dvh);
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding:
-    max(14px, env(safe-area-inset-top))
+    max(14px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px))
     max(12px, env(safe-area-inset-right))
-    max(10px, env(safe-area-inset-bottom))
+    8px
     max(12px, env(safe-area-inset-left));
   color: #f7fbff;
   overflow: hidden;
@@ -118,6 +127,7 @@ button:not(:disabled):active {
 .root-fallback {
   width: 100vw;
   min-height: 100dvh;
+  min-height: var(--tg-viewport-height, 100dvh);
   display: grid;
   place-items: center;
   align-content: center;
@@ -1847,7 +1857,10 @@ p {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
-  padding: 7px;
+  padding:
+    7px
+    7px
+    max(7px, env(safe-area-inset-bottom), var(--tg-safe-area-bottom, 0px));
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(7, 12, 26, 0.94);
@@ -2097,7 +2110,7 @@ p {
 
 .floating-coin-layer {
   position: fixed;
-  top: calc(max(14px, env(safe-area-inset-top)) + 76px);
+  top: calc(max(14px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px)) + 76px);
   left: 0;
   right: 0;
   z-index: 20;
@@ -2110,7 +2123,7 @@ p {
   position: fixed;
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
-  top: calc(max(14px, env(safe-area-inset-top)) + 8px);
+  top: calc(max(14px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px)) + 8px);
   z-index: 60;
   display: grid;
   gap: 8px;
@@ -2163,9 +2176,9 @@ p {
   display: grid;
   place-items: center;
   padding:
-    max(18px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px))
     max(14px, env(safe-area-inset-right))
-    max(18px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-bottom), var(--tg-safe-area-bottom, 0px))
     max(14px, env(safe-area-inset-left));
   background:
     radial-gradient(circle at 50% 38%, rgba(29, 247, 255, 0.16), transparent 40%),
@@ -2215,7 +2228,7 @@ p {
 .creature-modal {
   position: relative;
   width: min(100%, 410px);
-  max-height: calc(100dvh - 34px);
+  max-height: calc(var(--tg-viewport-height, 100dvh) - 34px);
   display: grid;
   justify-items: center;
   gap: 12px;
