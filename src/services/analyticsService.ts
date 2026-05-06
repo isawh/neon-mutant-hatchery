@@ -6,6 +6,7 @@ export type AnalyticsEventName =
   | "breed_completed"
   | "daily_reward_claimed"
   | "referral_shared"
+  | "rare_hatch_shared"
   | "shop_purchase_mocked"
   | "nft_mint_clicked";
 

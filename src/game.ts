@@ -144,6 +144,9 @@ export const getRarityChances = (state?: GameState, premium = false) => {
 
   const weights = RARITY_ORDER.map((rarity) => {
     const rank = RARITY_ORDER.indexOf(rarity);
+    if (rarity === "Secret") {
+      return Math.min(0.35, RARITY_CONFIG[rarity].chance + bonus * 0.012);
+    }
     if (rank === 0) {
       return Math.max(20, RARITY_CONFIG[rarity].chance - bonus * 1.9);
     }

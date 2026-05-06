@@ -51,17 +51,18 @@ export const TABS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: "profile", label: "Profile", icon: "user" },
 ];
 
-export const RARITY_ORDER: Rarity[] = ["Common", "Rare", "Epic", "Legendary", "Mythic"];
+export const RARITY_ORDER: Rarity[] = ["Common", "Rare", "Epic", "Legendary", "Mythic", "Secret"];
 
 export const RARITY_CONFIG: Record<
   Rarity,
   { chance: number; minIncome: number; maxIncome: number; className: string }
 > = {
-  Common: { chance: 62, minIncome: 2, maxIncome: 6, className: "rarity-common" },
+  Common: { chance: 61.95, minIncome: 2, maxIncome: 6, className: "rarity-common" },
   Rare: { chance: 24, minIncome: 7, maxIncome: 14, className: "rarity-rare" },
   Epic: { chance: 10, minIncome: 15, maxIncome: 28, className: "rarity-epic" },
   Legendary: { chance: 3.5, minIncome: 32, maxIncome: 56, className: "rarity-legendary" },
   Mythic: { chance: 0.5, minIncome: 70, maxIncome: 110, className: "rarity-mythic" },
+  Secret: { chance: 0.05, minIncome: 165, maxIncome: 240, className: "rarity-secret" },
 };
 
 export const TRAITS = [

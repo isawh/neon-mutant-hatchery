@@ -1,4 +1,4 @@
-export type Rarity = "Common" | "Rare" | "Epic" | "Legendary" | "Mythic";
+export type Rarity = "Common" | "Rare" | "Epic" | "Legendary" | "Mythic" | "Secret";
 
 export type PassiveTrait = "Lucky" | "Toxic" | "Ancient" | "Glitched" | "Radiant";
 

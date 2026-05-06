@@ -4,6 +4,8 @@ import {
   INITIAL_STATE,
   INVITE_MILESTONES,
   LIMITED_OFFERS,
+  NAME_PREFIXES,
+  NAME_SUFFIXES,
   PASSIVE_TRAIT_CONFIG,
   RARITY_CONFIG,
   RARITY_ORDER,
@@ -62,7 +64,14 @@ const formatDuration = (ms: number) => {
 
 const rarityRank = (rarity: Rarity) => RARITY_ORDER.indexOf(rarity);
 
+const isRareOrBetter = (rarity: Rarity) => rarityRank(rarity) >= rarityRank("Rare");
+
+const isFlexRarity = (rarity: Rarity) => rarityRank(rarity) >= rarityRank("Epic");
+
 const getRevealClass = (rarity: Rarity) => {
+  if (rarity === "Secret") {
+    return "reveal-secret";
+  }
   if (rarity === "Common") {
     return "reveal-fast";
   }
@@ -73,6 +82,9 @@ const getRevealClass = (rarity: Rarity) => {
 };
 
 const getRevealDelay = (rarity: Rarity) => {
+  if (rarity === "Secret") {
+    return 1480;
+  }
   if (rarity === "Common") {
     return 420;
   }
@@ -87,9 +99,20 @@ const hapticForRarity = (rarity: Rarity) => {
     haptic.impact("light");
   } else if (rarity === "Rare") {
     haptic.impact("medium");
+  } else if (rarity === "Secret") {
+    haptic.impact("heavy");
+    window.setTimeout(() => haptic.impact("heavy"), 120);
   } else {
     haptic.impact("heavy");
   }
+};
+
+const playSecretSoundPlaceholder = (creature: Creature) => {
+  console.log("[sound-placeholder] secret_hatch", {
+    creatureId: creature.id,
+    name: creature.name,
+    rarity: creature.rarity,
+  });
 };
 
 const loadPlayableState = () => {
@@ -317,6 +340,9 @@ export default function App() {
   const [notifications, setNotifications] = useState<Array<{ id: number; text: string; tone: "good" | "event" }>>([]);
   const [analyticsCount, setAnalyticsCount] = useState(() => getAnalyticsEventCount());
   const [pendingProductId, setPendingProductId] = useState<MockProductId | null>(null);
+  const [revealRarity, setRevealRarity] = useState<Rarity | null>(null);
+  const [screenFlash, setScreenFlash] = useState<Rarity | null>(null);
+  const [recentRareHatch, setRecentRareHatch] = useState<Creature | null>(null);
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
@@ -325,6 +351,10 @@ export default function App() {
   const pendingProduct = pendingProductId ? products.find((product) => product.id === pendingProductId) ?? null : null;
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
+  const totalSpecies = NAME_PREFIXES.length * NAME_SUFFIXES.length;
+  const discoveredCount = new Set(state.discoveredCreatureNames).size;
+  const undiscoveredCount = Math.max(0, totalSpecies - discoveredCount);
+  const collectionPercent = totalSpecies ? Math.min(100, Math.round((discoveredCount / totalSpecies) * 100)) : 0;
 
   const totalIncome = useMemo(() => getTotalIncomePerMinute(state.creatures), [state.creatures]);
   const boostedIncome = useMemo(() => getBoostedIncomePerMinute(state), [state, now]);
@@ -461,6 +491,8 @@ export default function App() {
     track("hatch_started", { premium: state.premiumCapsules > 0 });
     setState(result.state);
     setLastHatched(null);
+    setRevealRarity(result.creature.rarity);
+    setScreenFlash(null);
     setActiveTab("hatch");
     setIsHatching(true);
     haptic.impact("light");
@@ -469,6 +501,18 @@ export default function App() {
       setLastHatched(result.creature);
       setRevealKey((key) => key + 1);
       setIsHatching(false);
+      if (isRareOrBetter(result.creature.rarity)) {
+        setScreenFlash(result.creature.rarity);
+        window.setTimeout(() => setScreenFlash(null), result.creature.rarity === "Secret" ? 980 : 620);
+      }
+      window.setTimeout(() => setRevealRarity(null), 1500);
+      if (isFlexRarity(result.creature.rarity)) {
+        setRecentRareHatch(result.creature);
+      }
+      if (result.creature.rarity === "Secret") {
+        playSecretSoundPlaceholder(result.creature);
+        notify("SECRET MUTANT DISCOVERED", "event");
+      }
       hapticForRarity(result.creature.rarity);
       track("hatch_completed", { rarity: result.creature.rarity, creatureId: result.creature.id });
     }, getRevealDelay(result.creature.rarity));
@@ -484,6 +528,9 @@ export default function App() {
     setState(result.state);
     setLastHatched(result.creature);
     setRevealKey((key) => key + 1);
+    if (isFlexRarity(result.creature.rarity)) {
+      setRecentRareHatch(result.creature);
+    }
     setBreedSelection([]);
     setActiveTab("hatch");
     hapticForRarity(result.creature.rarity);
@@ -555,6 +602,17 @@ export default function App() {
     haptic.impact("medium");
   };
 
+  const handleShareRareHatch = () => {
+    if (!recentRareHatch) {
+      return;
+    }
+    const text = `I just hatched a ${recentRareHatch.rarity} ${recentRareHatch.name} in Neon Mutant Hatchery. Try to beat this pull.`;
+    shareTelegramInvite(referralLink, text);
+    notify("Rare hatch shared", "good");
+    track("rare_hatch_shared", { rarity: recentRareHatch.rarity, creatureId: recentRareHatch.id });
+    haptic.impact(recentRareHatch.rarity === "Secret" ? "heavy" : "medium");
+  };
+
   const handleInviteMilestone = (invites: number) => {
     spendOrWarn(claimReferralMilestone(state, invites), () => {
       notify(`Invite milestone ${invites} claimed`, "good");
@@ -623,7 +681,7 @@ export default function App() {
   };
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${lastHatched?.rarity === "Secret" ? "secret-distort" : ""}`}>
       <section className="top-panel">
         <div>
           <p className="eyebrow">Neon Mutant Hatchery</p>
@@ -635,6 +693,9 @@ export default function App() {
           onClick={() => {
             setState(resetGameState());
             setLastHatched(null);
+            setRevealRarity(null);
+            setScreenFlash(null);
+            setRecentRareHatch(null);
             setBreedSelection([]);
             setShowOfflineModal(false);
             haptic.impact("heavy");
@@ -686,6 +747,8 @@ export default function App() {
         ))}
       </div>
 
+      {screenFlash ? <div className={`screen-flash flash-${screenFlash.toLowerCase()}`} aria-hidden="true" /> : null}
+
       <section className="screen">
         {activeTab === "hatch" ? (
           <div className="hatch-screen">
@@ -701,11 +764,24 @@ export default function App() {
             ) : null}
             <div
               className={`incubator ${isHatching ? "hatching" : ""} ${
-                lastHatched ? `incubator-${lastHatched.rarity.toLowerCase()}` : ""
+                revealRarity || lastHatched ? `incubator-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}` : ""
               }`}
             >
+              <div className="chamber-particles" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
               <div className="scanline" />
               <div className={`capsule ${isHatching ? "capsule-hatching" : ""}`}>
+                <span className="capsule-crack capsule-crack-one" />
+                <span className="capsule-crack capsule-crack-two" />
+                <span className="energy-leak energy-leak-one" />
+                <span className="energy-leak energy-leak-two" />
+                <span className="energy-leak energy-leak-three" />
                 {lastHatched ? (
                   <CreatureVisual key={revealKey} creature={lastHatched} large reveal />
                 ) : (
@@ -714,6 +790,14 @@ export default function App() {
                   </div>
                 )}
               </div>
+              {(revealRarity || lastHatched) && !isHatching ? (
+                <div
+                  key={`${revealKey}-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}`}
+                  className={`rarity-reveal-text rarity-text-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}`}
+                >
+                  {(revealRarity ?? lastHatched!.rarity).toUpperCase()}
+                </div>
+              ) : null}
             </div>
             <div className="panel">
               <div>
@@ -763,12 +847,45 @@ export default function App() {
                 {formatNumber(boostedIncome)} coins/min{boostedIncome > totalIncome ? " boosted" : ""}
               </strong>
             </div>
+            {recentRareHatch ? (
+              <div className={`rare-flex-panel ${RARITY_CONFIG[recentRareHatch.rarity].className}`}>
+                <CreatureVisual creature={recentRareHatch} />
+                <div>
+                  <p className="eyebrow">Recent rare hatch</p>
+                  <h3>
+                    {recentRareHatch.rarity} {recentRareHatch.name}
+                  </h3>
+                  <p>Power {formatNumber(getPowerScore(recentRareHatch))} pull ready to flex.</p>
+                </div>
+                <button className="mini-button" onClick={handleShareRareHatch}>
+                  Share
+                </button>
+              </div>
+            ) : null}
             <MissionPanel missions={state.dailyMissions} onClaim={handleMissionClaim} />
           </div>
         ) : null}
 
         {activeTab === "collection" ? (
           <div className="collection-screen">
+            <div className="collection-progress">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Collection index</p>
+                  <h2>{collectionPercent}% discovered</h2>
+                </div>
+                <strong>
+                  {discoveredCount}/{totalSpecies}
+                </strong>
+              </div>
+              <div className="completion-bar">
+                <i style={{ width: `${collectionPercent}%` }} />
+              </div>
+              <div className="collection-counts">
+                <span>{discoveredCount} discovered</span>
+                <span>{undiscoveredCount} undiscovered</span>
+              </div>
+            </div>
             {state.creatures.length ? (
               <>
                 <div className="collection-toolbar">
@@ -796,10 +913,62 @@ export default function App() {
                       onUpgrade={() => handleUpgrade(creature.id)}
                     />
                   ))}
+                  {Array.from({ length: Math.min(8, undiscoveredCount) }).map((_, index) => (
+                    <article key={`locked-${index}`} className="creature-card silhouette-card" aria-label="Undiscovered creature">
+                      <div className="card-topline">
+                        <span>Undiscovered</span>
+                        <div className="card-badges">
+                          <span>???</span>
+                        </div>
+                      </div>
+                      <div className="silhouette-mutant">
+                        <span />
+                      </div>
+                      <div className="creature-info">
+                        <h3>Unknown mutant</h3>
+                        <p>Hatch capsules to reveal</p>
+                      </div>
+                      <div className="card-stat-grid">
+                        <span>
+                          <strong>?</strong>
+                          Income
+                        </span>
+                        <span>
+                          <strong>?</strong>
+                          Gen
+                        </span>
+                        <span>
+                          <strong>?</strong>
+                          Power
+                        </span>
+                      </div>
+                    </article>
+                  ))}
                 </div>
               </>
             ) : (
-              <EmptyState title="No mutants yet" body="Hatch your first capsule to start the collection." />
+              <>
+                <div className="creature-grid">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <article key={`empty-locked-${index}`} className="creature-card silhouette-card" aria-label="Undiscovered creature">
+                      <div className="card-topline">
+                        <span>Undiscovered</span>
+                        <div className="card-badges">
+                          <span>???</span>
+                        </div>
+                      </div>
+                      <div className="silhouette-mutant">
+                        <span />
+                      </div>
+                      <div className="creature-info">
+                        <h3>Unknown mutant</h3>
+                        <p>Hatch capsules to reveal</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <EmptyState title="No mutants yet" body="Hatch your first capsule to start the collection." />
+              </>
             )}
           </div>
         ) : null}
@@ -993,6 +1162,9 @@ export default function App() {
                 onClick={() => {
                   setState(ensureReferralCode(resetGameState()));
                   setLastHatched(null);
+                  setRevealRarity(null);
+                  setScreenFlash(null);
+                  setRecentRareHatch(null);
                   setBreedSelection([]);
                   setShowOfflineModal(false);
                   notify("Local save reset", "event");
