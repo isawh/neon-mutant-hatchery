@@ -3077,3 +3077,38 @@ p {
     padding-inline: 22px;
   }
 }
+
+@media (min-width: 700px) and (min-height: 700px) {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    padding-block: 10px 8px;
+  }
+
+  .hatch-screen {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .hatch-layout {
+    width: 100%;
+  }
+
+  .incubator {
+    height: clamp(320px, 52dvh, 560px);
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 700px) {
+  .hatch-screen {
+    gap: 18px;
+  }
+
+  .hatch-layout {
+    align-items: center;
+  }
+
+  .hatch-chamber-column .incubator {
+    height: clamp(460px, 64dvh, 680px);
+  }
+}
