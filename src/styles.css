@@ -442,8 +442,9 @@ p {
   position: relative;
   display: grid;
   place-items: center;
-  height: clamp(220px, 42dvh, 420px);
+  height: clamp(280px, 45dvh, 520px);
   min-height: 0;
+  padding: 18px;
   overflow: hidden;
   border: 1px solid rgba(29, 247, 255, 0.24);
   border-radius: 10px;
@@ -585,7 +586,10 @@ p {
 .capsule {
   position: relative;
   z-index: 2;
-  width: min(54vw, 280px);
+  width: auto;
+  height: clamp(180px, 32dvh, 360px);
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 36px);
   aspect-ratio: 0.72;
   display: grid;
   place-items: center;
@@ -680,7 +684,9 @@ p {
 }
 
 .egg-core {
-  width: 38%;
+  width: auto;
+  height: clamp(90px, 16dvh, 180px);
+  max-height: 58%;
   aspect-ratio: 0.78;
   border-radius: 54% 46% 48% 52% / 62% 58% 42% 38%;
   background:
@@ -3004,11 +3010,12 @@ p {
   }
 
   .incubator {
-    height: clamp(280px, 48dvh, 500px);
+    height: clamp(280px, 45dvh, 520px);
+    padding: 24px;
   }
 
   .capsule {
-    width: min(38vw, 340px);
+    height: clamp(200px, 32dvh, 360px);
   }
 
   .panel,
@@ -3052,7 +3059,7 @@ p {
     display: grid;
     grid-template-columns: minmax(0, 1.18fr) minmax(310px, 0.82fr);
     align-items: stretch;
-    gap: 18px;
+    gap: 22px;
   }
 
   .hatch-chamber-column {
@@ -3062,7 +3069,7 @@ p {
 
   .hatch-chamber-column .incubator {
     flex: 1 1 auto;
-    height: clamp(420px, 58dvh, 620px);
+    height: clamp(340px, 45dvh, 520px);
   }
 
   .hatch-side-column {
@@ -3070,7 +3077,7 @@ p {
   }
 
   .capsule {
-    width: min(30vw, 380px);
+    height: clamp(220px, 32dvh, 360px);
   }
 
   .bottom-nav {
@@ -3095,7 +3102,7 @@ p {
   }
 
   .incubator {
-    height: clamp(320px, 52dvh, 560px);
+    height: clamp(280px, 45dvh, 520px);
   }
 }
 
@@ -3109,6 +3116,6 @@ p {
   }
 
   .hatch-chamber-column .incubator {
-    height: clamp(460px, 64dvh, 680px);
+    height: clamp(360px, 45dvh, 520px);
   }
 }
