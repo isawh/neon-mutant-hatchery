@@ -770,106 +770,112 @@ export default function App() {
                 <strong>{formatDuration(state.activeEvent.endsAt - now)}</strong>
               </div>
             ) : null}
-            <div
-              className={`incubator ${isHatching ? "hatching" : ""} ${
-                revealRarity || lastHatched ? `incubator-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}` : ""
-              }`}
-            >
-              <div className="chamber-particles" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="scanline" />
-              <div className={`capsule ${isHatching ? "capsule-hatching" : ""}`}>
-                <span className="capsule-crack capsule-crack-one" />
-                <span className="capsule-crack capsule-crack-two" />
-                <span className="energy-leak energy-leak-one" />
-                <span className="energy-leak energy-leak-two" />
-                <span className="energy-leak energy-leak-three" />
-                {lastHatched ? (
-                  <CreatureVisual key={revealKey} creature={lastHatched} large reveal />
-                ) : (
-                  <div className="egg-core">
+            <div className="hatch-layout">
+              <div className="hatch-chamber-column">
+                <div
+                  className={`incubator ${isHatching ? "hatching" : ""} ${
+                    revealRarity || lastHatched ? `incubator-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}` : ""
+                  }`}
+                >
+                  <div className="chamber-particles" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                    <span />
                     <span />
                   </div>
-                )}
-              </div>
-              {(revealRarity || lastHatched) && !isHatching ? (
-                <div
-                  key={`${revealKey}-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}`}
-                  className={`rarity-reveal-text rarity-text-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}`}
-                >
-                  {(revealRarity ?? lastHatched!.rarity).toUpperCase()}
-                </div>
-              ) : null}
-            </div>
-            <div className="panel">
-              <div>
-                <p className="eyebrow">Incubation bay</p>
-                <h2>{lastHatched ? lastHatched.name : "Unstable capsule ready"}</h2>
-                <p>
-                  {lastHatched
-                    ? `${lastHatched.rarity} - Gen ${lastHatched.generation} - ${lastHatched.traits.join(", ")}`
-                    : "Crack open a capsule to generate a procedural mutant."}
-                </p>
-              </div>
-              <div className="hatch-meta-grid">
-                <StatPill label="Open cost" value={`${formatNumber(hatchCost)} coins`} />
-                <StatPill
-                  label="Next open"
-                  value={state.premiumCapsules > 0 ? "Premium" : `${state.hatchStreak} streak`}
-                />
-              </div>
-              <div className="odds-panel" aria-label="Hatch rarity chances">
-                {getRarityChances(state, state.premiumCapsules > 0).map(({ rarity, chance }) => (
-                  <div key={rarity} className={`odds-row ${RARITY_CONFIG[rarity].className}`}>
-                    <span>{rarity}</span>
-                    <div>
-                      <i style={{ width: `${chance}%` }} />
-                    </div>
-                    <strong>{chance}%</strong>
+                  <div className="scanline" />
+                  <div className={`capsule ${isHatching ? "capsule-hatching" : ""}`}>
+                    <span className="capsule-crack capsule-crack-one" />
+                    <span className="capsule-crack capsule-crack-two" />
+                    <span className="energy-leak energy-leak-one" />
+                    <span className="energy-leak energy-leak-two" />
+                    <span className="energy-leak energy-leak-three" />
+                    {lastHatched ? (
+                      <CreatureVisual key={revealKey} creature={lastHatched} large reveal />
+                    ) : (
+                      <div className="egg-core">
+                        <span />
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-              <button
-                className="primary-button"
-                disabled={
-                  (state.premiumCapsules <= 0 && (state.eggs <= 0 || state.coins < hatchCost)) || isHatching
-                }
-                onClick={handleHatch}
-              >
-                {isHatching
-                  ? "Stabilizing..."
-                  : state.premiumCapsules > 0
-                    ? "Open premium capsule"
-                    : `Hatch - ${formatNumber(hatchCost)}`}
-              </button>
-            </div>
-            <div className="income-strip">
-              <span>Total idle income</span>
-              <strong>
-                {formatNumber(boostedIncome)} coins/min{boostedIncome > totalIncome ? " boosted" : ""}
-              </strong>
-            </div>
-            {recentRareHatch ? (
-              <div className={`rare-flex-panel ${RARITY_CONFIG[recentRareHatch.rarity].className}`}>
-                <CreatureVisual creature={recentRareHatch} />
-                <div>
-                  <p className="eyebrow">Recent rare hatch</p>
-                  <h3>
-                    {recentRareHatch.rarity} {recentRareHatch.name}
-                  </h3>
-                  <p>Power {formatNumber(getPowerScore(recentRareHatch))} pull ready to flex.</p>
+                  {(revealRarity || lastHatched) && !isHatching ? (
+                    <div
+                      key={`${revealKey}-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}`}
+                      className={`rarity-reveal-text rarity-text-${(revealRarity ?? lastHatched!.rarity).toLowerCase()}`}
+                    >
+                      {(revealRarity ?? lastHatched!.rarity).toUpperCase()}
+                    </div>
+                  ) : null}
                 </div>
-                <button className="mini-button" onClick={handleShareRareHatch}>
-                  Share
-                </button>
               </div>
-            ) : null}
+              <div className="hatch-side-column">
+                <div className="panel">
+                  <div>
+                    <p className="eyebrow">Incubation bay</p>
+                    <h2>{lastHatched ? lastHatched.name : "Unstable capsule ready"}</h2>
+                    <p>
+                      {lastHatched
+                        ? `${lastHatched.rarity} - Gen ${lastHatched.generation} - ${lastHatched.traits.join(", ")}`
+                        : "Crack open a capsule to generate a procedural mutant."}
+                    </p>
+                  </div>
+                  <div className="hatch-meta-grid">
+                    <StatPill label="Open cost" value={`${formatNumber(hatchCost)} coins`} />
+                    <StatPill
+                      label="Next open"
+                      value={state.premiumCapsules > 0 ? "Premium" : `${state.hatchStreak} streak`}
+                    />
+                  </div>
+                  <div className="odds-panel" aria-label="Hatch rarity chances">
+                    {getRarityChances(state, state.premiumCapsules > 0).map(({ rarity, chance }) => (
+                      <div key={rarity} className={`odds-row ${RARITY_CONFIG[rarity].className}`}>
+                        <span>{rarity}</span>
+                        <div>
+                          <i style={{ width: `${chance}%` }} />
+                        </div>
+                        <strong>{chance}%</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="primary-button"
+                    disabled={
+                      (state.premiumCapsules <= 0 && (state.eggs <= 0 || state.coins < hatchCost)) || isHatching
+                    }
+                    onClick={handleHatch}
+                  >
+                    {isHatching
+                      ? "Stabilizing..."
+                      : state.premiumCapsules > 0
+                        ? "Open premium capsule"
+                        : `Hatch - ${formatNumber(hatchCost)}`}
+                  </button>
+                </div>
+                <div className="income-strip">
+                  <span>Total idle income</span>
+                  <strong>
+                    {formatNumber(boostedIncome)} coins/min{boostedIncome > totalIncome ? " boosted" : ""}
+                  </strong>
+                </div>
+                {recentRareHatch ? (
+                  <div className={`rare-flex-panel ${RARITY_CONFIG[recentRareHatch.rarity].className}`}>
+                    <CreatureVisual creature={recentRareHatch} />
+                    <div>
+                      <p className="eyebrow">Recent rare hatch</p>
+                      <h3>
+                        {recentRareHatch.rarity} {recentRareHatch.name}
+                      </h3>
+                      <p>Power {formatNumber(getPowerScore(recentRareHatch))} pull ready to flex.</p>
+                    </div>
+                    <button className="mini-button" onClick={handleShareRareHatch}>
+                      Share
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
             <MissionPanel missions={state.dailyMissions} onClaim={handleMissionClaim} />
           </div>
         ) : null}

@@ -118,8 +118,8 @@ button:not(:disabled):active {
 }
 
 .app-content {
-  width: min(100vw, 520px);
-  max-width: 520px;
+  width: 100%;
+  max-width: 100vw;
   height: 100%;
   min-height: 0;
   margin: 0 auto;
@@ -420,6 +420,19 @@ p {
 .breed-screen,
 .shop-screen,
 .profile-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hatch-layout,
+.hatch-chamber-column,
+.hatch-side-column {
+  min-width: 0;
+}
+
+.hatch-layout,
+.hatch-side-column {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2960,5 +2973,107 @@ p {
   50% {
     transform: scale(1.06);
     filter: brightness(1.25);
+  }
+}
+
+@media (min-width: 640px) {
+  .app-content {
+    width: min(100vw, 720px);
+    max-width: 720px;
+  }
+
+  .top-panel {
+    padding-inline: 18px;
+  }
+
+  .resource-bar,
+  .retention-strip {
+    gap: 12px;
+    padding-inline: 18px;
+  }
+
+  .screen {
+    padding-inline: 18px;
+  }
+
+  .hatch-screen,
+  .breed-screen,
+  .shop-screen,
+  .profile-screen {
+    gap: 16px;
+  }
+
+  .incubator {
+    height: clamp(280px, 48dvh, 500px);
+  }
+
+  .capsule {
+    width: min(38vw, 340px);
+  }
+
+  .panel,
+  .income-strip,
+  .rare-flex-panel,
+  .event-banner,
+  .mission-panel {
+    padding: 16px;
+  }
+
+  .hatch-meta-grid,
+  .stats-grid {
+    gap: 12px;
+  }
+
+  .bottom-nav {
+    padding-inline: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-content {
+    width: min(100vw, 900px);
+    max-width: 900px;
+  }
+
+  .top-panel {
+    padding-inline: 22px;
+  }
+
+  .resource-bar,
+  .retention-strip {
+    padding-inline: 22px;
+  }
+
+  .screen {
+    padding-inline: 22px;
+  }
+
+  .hatch-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.18fr) minmax(310px, 0.82fr);
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .hatch-chamber-column {
+    display: flex;
+    min-height: 0;
+  }
+
+  .hatch-chamber-column .incubator {
+    flex: 1 1 auto;
+    height: clamp(420px, 58dvh, 620px);
+  }
+
+  .hatch-side-column {
+    gap: 14px;
+  }
+
+  .capsule {
+    width: min(30vw, 380px);
+  }
+
+  .bottom-nav {
+    padding-inline: 22px;
   }
 }
