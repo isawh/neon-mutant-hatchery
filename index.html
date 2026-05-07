@@ -2,10 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#050713" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050713'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%231df7ff'/%3E%3Ccircle cx='40' cy='25' r='8' fill='%23ff4fd8'/%3E%3C/svg%3E" />
     <title>Neon Mutant Hatchery</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      (function () {
+        try {
+          var webApp = window.Telegram && window.Telegram.WebApp;
+          if (!webApp) {
+            return;
+          }
+          webApp.ready && webApp.ready();
+          webApp.expand && webApp.expand();
+          webApp.requestFullscreen && webApp.requestFullscreen();
+          webApp.disableVerticalSwipes && webApp.disableVerticalSwipes();
+        } catch (error) {
+          window.__telegramEarlyInitError = error;
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root">

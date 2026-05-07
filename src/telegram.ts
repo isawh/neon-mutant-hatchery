@@ -22,6 +22,7 @@ type TelegramWebApp = {
   viewportStableHeight?: number;
   isFullscreen?: boolean;
   isExpanded?: boolean;
+  version?: string;
   platform?: string;
   safeAreaInset?: TelegramSafeAreaInset;
   contentSafeAreaInset?: TelegramSafeAreaInset;
@@ -40,6 +41,7 @@ declare global {
     Telegram?: {
       WebApp?: TelegramWebApp;
     };
+    __telegramEarlyInitError?: unknown;
   }
 }
 
@@ -72,6 +74,10 @@ export type TelegramViewportState = {
   appHeight: string;
   windowInnerHeight: number;
   documentElementClientHeight: number;
+  documentHeight: number;
+  telegramSdkLoaded: boolean;
+  telegramObjectExists: boolean;
+  version: string;
   isFullscreen: boolean | null;
   isExpanded: boolean | null;
   platform: string;
@@ -86,6 +92,10 @@ export const getTelegramViewportState = (): TelegramViewportState => {
     appHeight: computedStyle.getPropertyValue("--app-height").trim() || `${window.innerHeight}px`,
     windowInnerHeight: window.innerHeight,
     documentElementClientHeight: root().clientHeight,
+    documentHeight: root().scrollHeight,
+    telegramSdkLoaded: Boolean(webApp),
+    telegramObjectExists: Boolean(window.Telegram),
+    version: webApp?.version ?? "Unavailable",
     isFullscreen: typeof webApp?.isFullscreen === "boolean" ? webApp.isFullscreen : null,
     isExpanded: typeof webApp?.isExpanded === "boolean" ? webApp.isExpanded : null,
     platform: webApp?.platform ?? "browser",

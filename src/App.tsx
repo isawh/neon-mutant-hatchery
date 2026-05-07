@@ -1156,14 +1156,21 @@ export default function App() {
                 </div>
                 <span>Local</span>
               </div>
+              {!telegramViewport.telegramSdkLoaded ? (
+                <div className="debug-warning">Telegram SDK not loaded — fullscreen API unavailable.</div>
+              ) : null}
               <div className="debug-grid">
                 <StatPill label="Origin" value={currentOrigin || "Unknown"} />
                 <StatPill label="Mode" value={environmentMode} />
                 <StatPill label="Player id" value={player.id} />
                 <StatPill label="Telegram" value={isTelegramEnvironment() ? "Yes" : "No"} />
+                <StatPill label="SDK loaded" value={telegramViewport.telegramSdkLoaded ? "Yes" : "No"} />
+                <StatPill label="TG object" value={telegramViewport.telegramObjectExists ? "Yes" : "No"} />
+                <StatPill label="WebApp ver" value={telegramViewport.version} />
                 <StatPill label="Platform" value={telegramViewport.platform} />
                 <StatPill label="Window h" value={`${telegramViewport.windowInnerHeight}px`} />
                 <StatPill label="Client h" value={`${telegramViewport.documentElementClientHeight}px`} />
+                <StatPill label="Document h" value={`${telegramViewport.documentHeight}px`} />
                 <StatPill label="App h" value={telegramViewport.appHeight || "Unknown"} />
                 <StatPill
                   label="Viewport"

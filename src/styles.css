@@ -107,11 +107,7 @@ button:not(:disabled):active {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding:
-    max(14px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px))
-    max(12px, env(safe-area-inset-right))
-    8px
-    max(12px, env(safe-area-inset-left));
+  padding: 0;
   color: #f7fbff;
   overflow: hidden;
   opacity: 1;
@@ -161,6 +157,10 @@ button:not(:disabled):active {
   align-items: center;
   justify-content: space-between;
   min-height: 54px;
+  padding:
+    max(10px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px))
+    12px
+    0;
 }
 
 .eyebrow {
@@ -273,12 +273,14 @@ p {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  padding: 0 12px;
 }
 
 .retention-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
+  padding: 0 12px;
 }
 
 .reward-chip {
@@ -383,7 +385,7 @@ p {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding-bottom: 4px;
+  padding: 0 12px 4px;
   scrollbar-width: none;
 }
 
@@ -1859,10 +1861,10 @@ p {
   gap: 6px;
   padding:
     7px
-    7px
+    12px
     max(7px, env(safe-area-inset-bottom), var(--tg-safe-area-bottom, 0px));
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   background: rgba(7, 12, 26, 0.94);
   box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.22);
 }
@@ -2068,6 +2070,18 @@ p {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.debug-warning {
+  padding: 9px 10px;
+  border: 1px solid rgba(247, 240, 90, 0.34);
+  border-radius: 8px;
+  color: var(--yellow);
+  font-size: 0.78rem;
+  font-weight: 900;
+  background:
+    linear-gradient(135deg, rgba(247, 240, 90, 0.12), rgba(255, 79, 216, 0.08)),
+    rgba(7, 13, 27, 0.88);
 }
 
 .referral-code {
