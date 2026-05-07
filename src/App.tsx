@@ -689,56 +689,57 @@ export default function App() {
 
   return (
     <main className={`app-shell ${lastHatched?.rarity === "Secret" ? "secret-distort" : ""}`}>
-      <section className="top-panel">
-        <div>
-          <p className="eyebrow">Neon Mutant Hatchery</p>
-          <h1>Capsule Lab</h1>
-        </div>
-        <button
-          className="icon-button"
-          aria-label="Reset game"
-          onClick={() => {
-            setState(resetGameState());
-            setLastHatched(null);
-            setRevealRarity(null);
-            setScreenFlash(null);
-            setRecentRareHatch(null);
-            setBreedSelection([]);
-            setShowOfflineModal(false);
-            haptic.impact("heavy");
-          }}
-        >
-          <span className="reset-icon" />
-        </button>
-      </section>
-
-      <section className="resource-bar" aria-label="Resources">
-        <AnimatedStatPill label="Coins" value={state.coins} />
-        <StatPill label="Gems" value={formatNumber(state.gems)} />
-        <StatPill label="Capsules" value={`${formatNumber(state.eggs)} / P${state.premiumCapsules}`} />
-      </section>
-
-      {stateLoadError ? (
-        <section className="startup-warning" role="status">
-          <strong>Temporary lab loaded</strong>
-          <span>Saved data was unavailable, so a fresh playable session is running.</span>
+      <div className="app-content">
+        <section className="top-panel">
+          <div>
+            <p className="eyebrow">Neon Mutant Hatchery</p>
+            <h1>Capsule Lab</h1>
+          </div>
+          <button
+            className="icon-button"
+            aria-label="Reset game"
+            onClick={() => {
+              setState(resetGameState());
+              setLastHatched(null);
+              setRevealRarity(null);
+              setScreenFlash(null);
+              setRecentRareHatch(null);
+              setBreedSelection([]);
+              setShowOfflineModal(false);
+              haptic.impact("heavy");
+            }}
+          >
+            <span className="reset-icon" />
+          </button>
         </section>
-      ) : null}
 
-      <section className="retention-strip" aria-label="Daily rewards">
-        <button className="reward-chip" disabled={!canClaimDaily} onClick={handleDailyReward}>
-          <span>Daily</span>
-          <strong>{canClaimDaily ? "Claim" : `Streak ${state.loginStreak}`}</strong>
-        </button>
-        <button className="reward-chip" disabled={freeCapsuleRemaining > 0} onClick={handleFreeCapsule}>
-          <span>Free capsule</span>
-          <strong>{formatDuration(freeCapsuleRemaining)}</strong>
-        </button>
-        <div className="reward-chip passive-chip">
-          <span>Hatch streak</span>
-          <strong>{state.hatchStreak}x</strong>
-        </div>
-      </section>
+        <section className="resource-bar" aria-label="Resources">
+          <AnimatedStatPill label="Coins" value={state.coins} />
+          <StatPill label="Gems" value={formatNumber(state.gems)} />
+          <StatPill label="Capsules" value={`${formatNumber(state.eggs)} / P${state.premiumCapsules}`} />
+        </section>
+
+        {stateLoadError ? (
+          <section className="startup-warning" role="status">
+            <strong>Temporary lab loaded</strong>
+            <span>Saved data was unavailable, so a fresh playable session is running.</span>
+          </section>
+        ) : null}
+
+        <section className="retention-strip" aria-label="Daily rewards">
+          <button className="reward-chip" disabled={!canClaimDaily} onClick={handleDailyReward}>
+            <span>Daily</span>
+            <strong>{canClaimDaily ? "Claim" : `Streak ${state.loginStreak}`}</strong>
+          </button>
+          <button className="reward-chip" disabled={freeCapsuleRemaining > 0} onClick={handleFreeCapsule}>
+            <span>Free capsule</span>
+            <strong>{formatDuration(freeCapsuleRemaining)}</strong>
+          </button>
+          <div className="reward-chip passive-chip">
+            <span>Hatch streak</span>
+            <strong>{state.hatchStreak}x</strong>
+          </div>
+        </section>
 
       <div className="floating-coin-layer" aria-hidden="true">
         {floatingCoins.map((item) => (
@@ -1331,6 +1332,7 @@ export default function App() {
           </button>
         ))}
       </nav>
+      </div>
     </main>
   );
 }

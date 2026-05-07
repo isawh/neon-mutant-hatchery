@@ -117,6 +117,20 @@ button:not(:disabled):active {
   transform: none;
 }
 
+.app-content {
+  width: min(100vw, 520px);
+  max-width: 520px;
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
 .app-shell.secret-distort {
   animation: secretUiDistort 2.4s ease-in-out 2;
 }
@@ -213,6 +227,7 @@ p {
 }
 
 .startup-warning {
+  margin: 0 12px;
   display: grid;
   gap: 2px;
   padding: 9px 11px;
@@ -414,7 +429,8 @@ p {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: clamp(196px, 35dvh, 330px);
+  height: clamp(220px, 42dvh, 420px);
+  min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(29, 247, 255, 0.24);
   border-radius: 10px;
@@ -556,7 +572,7 @@ p {
 .capsule {
   position: relative;
   z-index: 2;
-  width: min(74vw, 320px);
+  width: min(54vw, 280px);
   aspect-ratio: 0.72;
   display: grid;
   place-items: center;
