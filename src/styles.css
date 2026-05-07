@@ -3102,7 +3102,27 @@ p {
   }
 
   .incubator {
-    height: clamp(280px, 45dvh, 520px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+    height: clamp(360px, 46dvh, 560px);
+    padding: 28px;
+  }
+
+  .capsule {
+    position: relative;
+    inset: auto;
+    top: auto;
+    bottom: auto;
+    height: clamp(220px, 32dvh, 360px);
+    max-height: 80%;
+    transform: none;
+  }
+
+  .egg-core {
+    height: clamp(110px, 16dvh, 180px);
+    max-height: 45%;
   }
 }
 
@@ -3116,6 +3136,7 @@ p {
   }
 
   .hatch-chamber-column .incubator {
-    height: clamp(360px, 45dvh, 520px);
+    min-height: 360px;
+    height: clamp(360px, 46dvh, 560px);
   }
 }
