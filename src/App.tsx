@@ -65,18 +65,23 @@ import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService"
 import {
   authenticateWithTelegram,
   claimReferralMilestoneWithBackend,
+  completeMockPayment,
+  createPaymentInvoice,
   isBackendConfigured,
+  loadBackendProducts,
   loadCloudSave,
   loadReferralStats,
   registerReferralWithBackend,
   saveCloudSave,
   simulateReferralWithBackend,
+  type BackendProduct,
   type BackendReferralStats,
+  type MockCompletePaymentResponse,
   type ReferralReward,
 } from "./services/apiClient";
 import { getCurrentPlayer, isTelegramEnvironment } from "./services/authService";
 import { buildCreatureMetadata, mockMintCreature } from "./services/nftService";
-import { getProducts, purchaseProduct, type MockProduct, type MockProductId } from "./services/paymentService";
+import { getProducts, purchaseProduct } from "./services/paymentService";
 import {
   buildReferralLink,
   ensureReferralCode,
@@ -186,6 +191,8 @@ const playSecretSoundPlaceholder = (creature: Creature) => {
 };
 
 type SaveSource = "local" | "cloud";
+type PaymentsMode = "local" | "mock" | "backend";
+type ShopProduct = BackendProduct;
 
 const getIncomingReferralCode = () => {
   if (typeof window === "undefined") {
@@ -442,7 +449,7 @@ export default function App() {
   const [now, setNow] = useState(Date.now());
   const [notifications, setNotifications] = useState<Array<{ id: number; text: string; tone: "good" | "event" }>>([]);
   const [analyticsCount, setAnalyticsCount] = useState(() => getAnalyticsEventCount());
-  const [pendingProductId, setPendingProductId] = useState<MockProductId | null>(null);
+  const [pendingProductId, setPendingProductId] = useState<string | null>(null);
   const [revealRarity, setRevealRarity] = useState<Rarity | null>(null);
   const [screenFlash, setScreenFlash] = useState<Rarity | null>(null);
   const [recentRareHatch, setRecentRareHatch] = useState<Creature | null>(null);
@@ -454,6 +461,10 @@ export default function App() {
   const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
   const [backendReferralStats, setBackendReferralStats] = useState<BackendReferralStats | null>(null);
   const [referralBusy, setReferralBusy] = useState(false);
+  const [shopProducts, setShopProducts] = useState<ShopProduct[]>(() => getProducts());
+  const [paymentsMode, setPaymentsMode] = useState<PaymentsMode>("local");
+  const [lastPurchaseStatus, setLastPurchaseStatus] = useState("None");
+  const [purchaseBusy, setPurchaseBusy] = useState(false);
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
@@ -462,8 +473,7 @@ export default function App() {
   const pendingCloudStateRef = useRef<GameState>(initialLoad.state);
   const lastCloudSavedJsonRef = useRef("");
   const player = useMemo(() => getCurrentPlayer(), []);
-  const products = useMemo(() => getProducts(), []);
-  const pendingProduct = pendingProductId ? products.find((product) => product.id === pendingProductId) ?? null : null;
+  const pendingProduct = pendingProductId ? shopProducts.find((product) => product.id === pendingProductId) ?? null : null;
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
   const backendConfigured = isBackendConfigured();
@@ -567,6 +577,38 @@ export default function App() {
         lastActiveAt: Date.now(),
       }),
     );
+  };
+
+  const applyProductReward = (reward: ShopProduct["reward"]) => {
+    setState((current) =>
+      ensureProgressionState({
+        ...current,
+        gems: current.gems + (reward.gems ?? 0),
+        premiumCapsules: current.premiumCapsules + (reward.premiumCapsules ?? 0),
+        mutationStormTickets: current.mutationStormTickets + (reward.mutationStormTickets ?? 0),
+        activeEvent: reward.mutationStormTickets
+          ? {
+              id: "mutation_storm",
+              title: "Mutation Storm",
+              description: "Ticket activated: Epic+ odds are boosted for this session.",
+              endsAt: now + 60 * 60 * 1000,
+            }
+          : current.activeEvent,
+        incomeBoostUntil: reward.incomeBoostMinutes
+          ? now + reward.incomeBoostMinutes * 60 * 1000
+          : current.incomeBoostUntil,
+        luckyBoostUntil: reward.luckyBoostMinutes ? now + reward.luckyBoostMinutes * 60 * 1000 : current.luckyBoostUntil,
+        lastActiveAt: now,
+      }),
+    );
+  };
+
+  const completeBackendMockPurchase = async (productId: string): Promise<MockCompletePaymentResponse | null> => {
+    if (!cloudPlayerId) {
+      return null;
+    }
+
+    return completeMockPayment(cloudPlayerId, productId);
   };
 
   const applyBackendReferralStats = (stats: BackendReferralStats) => {
@@ -776,6 +818,35 @@ export default function App() {
   useEffect(() => {
     saveGameState(state);
   }, [state]);
+
+  useEffect(() => {
+    if (!backendConfigured) {
+      setShopProducts(getProducts());
+      setPaymentsMode("local");
+      return;
+    }
+
+    let cancelled = false;
+    void loadBackendProducts()
+      .then((products) => {
+        if (cancelled || !products?.length) {
+          return;
+        }
+        setShopProducts(products);
+        setPaymentsMode("backend");
+      })
+      .catch((error) => {
+        console.warn("[payments] Backend products unavailable; using local mock catalog.", error);
+        if (!cancelled) {
+          setShopProducts(getProducts());
+          setPaymentsMode("local");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backendConfigured]);
 
   useEffect(() => {
     pendingCloudStateRef.current = state;
@@ -1099,8 +1170,21 @@ export default function App() {
 
     setReferralBusy(true);
     try {
-      await simulateReferralWithBackend(cloudPlayerId);
-      await refreshBackendReferralStats(cloudPlayerId);
+      const result = await simulateReferralWithBackend(cloudPlayerId);
+      if (!result?.registered) {
+        notify(result?.reason ? `Simulation skipped: ${result.reason}` : "Simulation failed", "event");
+        if (result?.stats) {
+          applyBackendReferralStats(result.stats);
+        }
+        haptic.error();
+        return;
+      }
+
+      if (result.stats) {
+        applyBackendReferralStats(result.stats);
+      } else {
+        await refreshBackendReferralStats(cloudPlayerId);
+      }
       notify("Simulated referral added", "good");
       haptic.impact("medium");
     } catch (error) {
@@ -1127,40 +1211,67 @@ export default function App() {
     });
   };
 
-  const handleProductPurchase = (productId: MockProductId) => {
-    const purchase = purchaseProduct(productId);
-    if (!purchase) {
+  const handleProductPurchase = async (productId: string) => {
+    const product = shopProducts.find((item) => item.id === productId);
+    if (!product) {
       haptic.error();
       return;
     }
 
-    setState((current) =>
-      ensureProgressionState({
-        ...current,
-        gems: current.gems + (purchase.product.reward.gems ?? 0),
-        premiumCapsules: current.premiumCapsules + (purchase.product.reward.premiumCapsules ?? 0),
-        mutationStormTickets: current.mutationStormTickets + (purchase.product.reward.mutationStormTickets ?? 0),
-        activeEvent: purchase.product.reward.mutationStormTickets
-          ? {
-              id: "mutation_storm",
-              title: "Mutation Storm",
-              description: "Ticket activated: Epic+ odds are boosted for this session.",
-              endsAt: now + 60 * 60 * 1000,
-            }
-          : current.activeEvent,
-        incomeBoostUntil: purchase.product.reward.incomeBoostMinutes
-          ? now + purchase.product.reward.incomeBoostMinutes * 60 * 1000
-          : current.incomeBoostUntil,
-        luckyBoostUntil: purchase.product.reward.luckyBoostMinutes
-          ? now + purchase.product.reward.luckyBoostMinutes * 60 * 1000
-          : current.luckyBoostUntil,
-        lastActiveAt: now,
-      }),
-    );
-    setPendingProductId(null);
-    notify(`${purchase.product.title} mocked`, "good");
-    track("shop_purchase_mocked", { productId });
-    haptic.success();
+    setPurchaseBusy(true);
+    try {
+      if (backendConfigured && cloudPlayerId) {
+        const invoice = await createPaymentInvoice(cloudPlayerId, productId);
+        if (invoice?.mode === "dev_mock_available") {
+          const completed = await completeBackendMockPurchase(productId);
+          if (!completed?.ok) {
+            throw new Error("Mock payment completion failed.");
+          }
+          applyProductReward(completed.reward);
+          setLastPurchaseStatus(`${completed.purchase.id.slice(0, 8)} ${completed.purchase.status}`);
+          setPaymentsMode("mock");
+          notify(`${completed.product.title} added`, "good");
+          track("shop_purchase_mocked", { productId, purchaseId: completed.purchase.id, source: "backend_mock" });
+        } else if (invoice) {
+          setLastPurchaseStatus(`${invoice.purchase.id.slice(0, 8)} ${invoice.purchase.status}`);
+          setPaymentsMode("backend");
+          notify("Telegram Stars invoice placeholder created", "event");
+          track("shop_purchase_mocked", { productId, purchaseId: invoice.purchase.id, source: "invoice_placeholder" });
+        } else {
+          throw new Error("Backend invoice unavailable.");
+        }
+      } else {
+        const purchase = purchaseProduct(productId);
+        if (!purchase) {
+          throw new Error("Local product unavailable.");
+        }
+        applyProductReward(purchase.product.reward);
+        setLastPurchaseStatus(`local ${purchase.purchasedAt}`);
+        setPaymentsMode("local");
+        notify(`${purchase.product.title} mocked`, "good");
+        track("shop_purchase_mocked", { productId, source: "local" });
+      }
+
+      setPendingProductId(null);
+      haptic.success();
+    } catch (error) {
+      console.warn("[payments] Purchase flow failed; falling back to local mock when possible.", error);
+      const purchase = purchaseProduct(productId);
+      if (purchase) {
+        applyProductReward(purchase.product.reward);
+        setPendingProductId(null);
+        setLastPurchaseStatus(`local ${purchase.purchasedAt}`);
+        setPaymentsMode("local");
+        notify(`${purchase.product.title} mocked locally`, "good");
+        track("shop_purchase_mocked", { productId, source: "local_fallback" });
+        haptic.success();
+      } else {
+        notify("Purchase unavailable", "event");
+        haptic.error();
+      }
+    } finally {
+      setPurchaseBusy(false);
+    }
   };
 
   const handleMockMint = (creatureId: string) => {
@@ -1554,25 +1665,25 @@ export default function App() {
             <ShopSection
               title="Capsules"
               eyebrow="Telegram Stars"
-              products={products.filter((product) => product.section === "capsules")}
+              products={shopProducts.filter((product) => product.section === "capsules")}
               onSelect={setPendingProductId}
             />
             <ShopSection
               title="Gems"
               eyebrow="Currency"
-              products={products.filter((product) => product.section === "gems")}
+              products={shopProducts.filter((product) => product.section === "gems")}
               onSelect={setPendingProductId}
             />
             <ShopSection
               title="Boosts"
               eyebrow="Timed power"
-              products={products.filter((product) => product.section === "boosts")}
+              products={shopProducts.filter((product) => product.section === "boosts")}
               onSelect={setPendingProductId}
             />
             <ShopSection
               title="Limited Offers"
               eyebrow="Rotating"
-              products={products.filter((product) => product.section === "limited")}
+              products={shopProducts.filter((product) => product.section === "limited")}
               onSelect={setPendingProductId}
             />
             <div className="limited-shop">
@@ -1700,6 +1811,8 @@ export default function App() {
                 <StatPill label="Player id" value={currentPlayerId} />
                 <StatPill label="Cloud sync" value={lastCloudSyncLabel} />
                 <StatPill label="Save source" value={saveSource} />
+                <StatPill label="Payments" value={paymentsMode} />
+                <StatPill label="Last buy" value={lastPurchaseStatus} />
                 <StatPill label="Telegram" value={isTelegramEnvironment() ? "Yes" : "No"} />
                 <StatPill label="SDK loaded" value={telegramViewport.telegramSdkLoaded ? "Yes" : "No"} />
                 <StatPill label="TG object" value={telegramViewport.telegramObjectExists ? "Yes" : "No"} />
@@ -1937,12 +2050,16 @@ export default function App() {
             <p>{pendingProduct.description}</p>
             <div className="purchase-summary">
               <span>Price</span>
-              <strong>{pendingProduct.stars} Stars</strong>
+              <strong>{pendingProduct.starsPrice} Stars</strong>
             </div>
-            <button className="primary-button" onClick={() => handleProductPurchase(pendingProduct.id)}>
-              Buy with Telegram Stars
+            <button className="primary-button" disabled={purchaseBusy} onClick={() => handleProductPurchase(pendingProduct.id)}>
+              {purchaseBusy ? "Processing..." : "Buy with Telegram Stars"}
             </button>
-            <p className="fine-print">Mock purchase only. No invoice or real payment is created.</p>
+            <p className="fine-print">
+              {paymentsMode === "local"
+                ? "Local mock purchase only. No invoice or real payment is created."
+                : "Telegram Stars invoice foundation. Dev backends complete with a mock payment."}
+            </p>
           </div>
         </div>
       ) : null}
@@ -2196,8 +2313,8 @@ function ShopSection({
 }: {
   title: string;
   eyebrow: string;
-  products: MockProduct[];
-  onSelect: (productId: MockProductId) => void;
+  products: ShopProduct[];
+  onSelect: (productId: string) => void;
 }) {
   if (!products.length) {
     return null;
@@ -2223,7 +2340,7 @@ function ShopSection({
             <p>{product.description}</p>
             <div className="product-footer">
               <span>{product.rewardLabel}</span>
-              <strong>{product.stars} STAR</strong>
+              <strong>{product.starsPrice} STAR</strong>
             </div>
           </button>
         ))}

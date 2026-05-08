@@ -4,9 +4,12 @@ import { config } from "dotenv";
 import { createHmac, timingSafeEqual } from "crypto";
 import {
   claimReferralMilestone,
+  completeMockPurchase,
+  createPurchaseInvoice,
   findOrCreatePlayer,
   findPlayerById,
   getDevPlayer,
+  getProducts,
   getReferralStats,
   loadSave,
   registerReferral,
@@ -203,8 +206,92 @@ app.post("/api/referral/simulate", (request: any, response: any) => {
     return;
   }
 
-  const result = simulateReferralForPlayer(playerId);
-  response.json({ playerId, stats: getReferralStats(playerId), ...result });
+  try {
+    const result = simulateReferralForPlayer(playerId);
+    const stats = getReferralStats(playerId);
+    if (!result.registered) {
+      console.warn("[referral:simulate] Simulation did not register", {
+        playerId,
+        reason: result.reason,
+        statsFound: Boolean(stats),
+      });
+    }
+    response.json({ playerId, stats, ...result });
+  } catch (error) {
+    console.error("[referral:simulate] Failed to create simulated referral", {
+      playerId,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    response.status(500).json({
+      error: "Failed to simulate referral",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+app.get("/api/products", (_request: any, response: any) => {
+  response.json({ products: getProducts() });
+});
+
+app.post("/api/payments/create-invoice", (request: any, response: any) => {
+  const playerId = typeof request.body?.playerId === "string" ? request.body.playerId.trim() : "";
+  const productId = typeof request.body?.productId === "string" ? request.body.productId.trim() : "";
+
+  if (!playerId || !productId) {
+    response.status(400).json({ error: "playerId and productId are required" });
+    return;
+  }
+
+  const result = createPurchaseInvoice(playerId, productId);
+  if (!result) {
+    response.status(404).json({ error: "Player or product not found" });
+    return;
+  }
+
+  // TODO: replace this placeholder with Telegram Stars createInvoiceLink/sendInvoice.
+  // TODO: validate pre_checkout_query and grant rewards only after successful_payment is confirmed server-side.
+  response.json({
+    ok: true,
+    mode: nodeEnv === "production" ? "telegram_stars_placeholder" : "dev_mock_available",
+    purchase: result.purchase,
+    invoice: {
+      productId: result.product.id,
+      title: result.product.title,
+      description: result.product.description,
+      starsPrice: result.product.starsPrice,
+      payload: `purchase:${result.purchase.id}`,
+      invoiceLink: null,
+    },
+  });
+});
+
+app.post("/api/payments/mock-complete", (request: any, response: any) => {
+  if (nodeEnv === "production") {
+    response.status(403).json({ error: "Mock payment completion is development-only" });
+    return;
+  }
+
+  const playerId = typeof request.body?.playerId === "string" ? request.body.playerId.trim() : "";
+  const productId = typeof request.body?.productId === "string" ? request.body.productId.trim() : "";
+
+  if (!playerId || !productId) {
+    response.status(400).json({ error: "playerId and productId are required" });
+    return;
+  }
+
+  const result = completeMockPurchase(playerId, productId);
+  if (!result) {
+    response.status(404).json({ error: "Player or product not found" });
+    return;
+  }
+
+  response.json({
+    ok: true,
+    purchase: result.purchase,
+    product: result.product,
+    reward: result.product.reward,
+  });
 });
 
 app.listen(port, () => {

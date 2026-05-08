@@ -66,6 +66,7 @@ Tables:
 - `saves`: one cloud save JSON payload per player.
 - `referrals`: one referral attribution row per invited player.
 - `referral_milestone_claims`: claimed invite milestone rewards per inviter.
+- `purchases`: Telegram Stars invoice placeholders and dev mock purchase completions.
 
 SQLite is a good development step because it survives server restarts and keeps the schema real. It is still not the final production database plan: before launch, move to a managed database, add migrations/backups, add request authorization on save routes, and harden referral reward attribution.
 
@@ -202,10 +203,54 @@ Development-only endpoint. Creates a fake referred player and attaches it to the
 }
 ```
 
+### `GET /api/products`
+
+Returns the backend-owned Telegram Stars product catalog.
+
+Product ids:
+
+- `premium_capsules_3`
+- `premium_capsules_10`
+- `gems_100`
+- `gems_500`
+- `double_income_24h`
+- `lucky_hatch_1h`
+- `mutation_storm_ticket`
+
+### `POST /api/payments/create-invoice`
+
+Creates a purchase record and returns an invoice placeholder.
+
+```json
+{
+  "playerId": "tg_123",
+  "productId": "premium_capsules_3"
+}
+```
+
+TODO before real Stars launch:
+
+- Use Telegram `createInvoiceLink` or `sendInvoice`.
+- Validate `pre_checkout_query`.
+- Grant rewards only after a verified `successful_payment`.
+- Reconcile failed/expired pending purchases.
+
+### `POST /api/payments/mock-complete`
+
+Development-only endpoint. Completes a product purchase without real Telegram Stars and returns the reward payload for the frontend to apply to the current game save.
+
+```json
+{
+  "playerId": "tg_123",
+  "productId": "premium_capsules_3"
+}
+```
+
 TODO before production:
 
 - Add authorization checks to save endpoints.
 - Add migrations and database backups.
 - Move from local SQLite to a managed production database.
 - Add rate limits and request logging.
-- Add real payment/NFT services separately when ready.
+- Complete real Telegram Stars payment confirmation.
+- Add real NFT services separately when ready.

@@ -40,6 +40,16 @@ const unique = <T,>(items: T[]) => new Set(items).size === items.length;
 const hasReward = (reward: Record<string, unknown>) =>
   Object.values(reward).some((value) => typeof value === "number" && value > 0);
 
+const expectedProductIds = new Set([
+  "premium_capsules_3",
+  "premium_capsules_10",
+  "gems_100",
+  "gems_500",
+  "double_income_24h",
+  "lucky_hatch_1h",
+  "mutation_storm_ticket",
+]);
+
 const checkFiles = () => {
   [
     "index.html",
@@ -113,8 +123,8 @@ const checks: Check[] = [
       assert(products.length > 0, "No mock products configured");
       assert(unique(products.map((product) => product.id)), "Product ids must be unique");
       products.forEach((product) => {
-        assert(product.id.startsWith("stars_"), `Product id should be Stars-ready: ${product.id}`);
-        assert(Number.isInteger(product.stars) && product.stars > 0, `Invalid Stars price for ${product.id}`);
+        assert(expectedProductIds.has(product.id), `Unexpected product id: ${product.id}`);
+        assert(Number.isInteger(product.starsPrice) && product.starsPrice > 0, `Invalid Stars price for ${product.id}`);
         assert(hasReward(product.reward), `Product reward missing for ${product.id}`);
       });
     },

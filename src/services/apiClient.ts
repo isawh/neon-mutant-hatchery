@@ -50,6 +50,58 @@ export type ReferralRegisterResponse = {
   invitedReward?: ReferralReward;
 };
 
+export type ReferralSimulateResponse = ReferralRegisterResponse & {
+  playerId: string;
+  stats: BackendReferralStats | null;
+};
+
+export type BackendProduct = {
+  id: string;
+  section: "capsules" | "gems" | "boosts" | "limited";
+  title: string;
+  description: string;
+  starsPrice: number;
+  rewardLabel: string;
+  reward: ReferralReward & {
+    incomeBoostMinutes?: number;
+    luckyBoostMinutes?: number;
+    mutationStormTickets?: number;
+  };
+  enabled: boolean;
+  badge?: "Best Value" | "Limited";
+};
+
+export type PaymentPurchase = {
+  id: string;
+  playerId: string;
+  productId: string;
+  starsPrice: number;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type CreateInvoiceResponse = {
+  ok: boolean;
+  mode: "dev_mock_available" | "telegram_stars_placeholder";
+  purchase: PaymentPurchase;
+  invoice: {
+    productId: string;
+    title: string;
+    description: string;
+    starsPrice: number;
+    payload: string;
+    invoiceLink: string | null;
+  };
+};
+
+export type MockCompletePaymentResponse = {
+  ok: boolean;
+  purchase: PaymentPurchase;
+  product: BackendProduct;
+  reward: BackendProduct["reward"];
+};
+
 export type ReferralClaimResponse = {
   ok: boolean;
   claimed: boolean;
@@ -79,7 +131,8 @@ const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> =
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const body = await response.text().catch(() => "");
+    throw new Error(`API request failed: ${response.status}${body ? ` ${body}` : ""}`);
   }
 
   return response.json() as Promise<T>;
@@ -114,6 +167,43 @@ export const saveCloudSave = async (playerId: string, gameState: GameState): Pro
   return requestJson<CloudSaveResponse>(`/api/player/${encodeURIComponent(playerId)}/save`, {
     method: "POST",
     body: JSON.stringify({ gameState }),
+  });
+};
+
+export const loadBackendProducts = async (): Promise<BackendProduct[] | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  const response = await requestJson<{ products: BackendProduct[] }>("/api/products");
+  return response.products;
+};
+
+export const createPaymentInvoice = async (
+  playerId: string,
+  productId: string,
+): Promise<CreateInvoiceResponse | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<CreateInvoiceResponse>("/api/payments/create-invoice", {
+    method: "POST",
+    body: JSON.stringify({ playerId, productId }),
+  });
+};
+
+export const completeMockPayment = async (
+  playerId: string,
+  productId: string,
+): Promise<MockCompletePaymentResponse | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<MockCompletePaymentResponse>("/api/payments/mock-complete", {
+    method: "POST",
+    body: JSON.stringify({ playerId, productId }),
   });
 };
 
@@ -153,12 +243,12 @@ export const claimReferralMilestoneWithBackend = async (
   });
 };
 
-export const simulateReferralWithBackend = async (playerId: string): Promise<ReferralRegisterResponse | null> => {
+export const simulateReferralWithBackend = async (playerId: string): Promise<ReferralSimulateResponse | null> => {
   if (!isBackendConfigured()) {
     return null;
   }
 
-  return requestJson<ReferralRegisterResponse>("/api/referral/simulate", {
+  return requestJson<ReferralSimulateResponse>("/api/referral/simulate", {
     method: "POST",
     body: JSON.stringify({ playerId }),
   });

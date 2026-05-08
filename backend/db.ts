@@ -50,6 +50,36 @@ export type ReferralReward = {
   exclusiveColor?: string;
 };
 
+export type ProductReward = {
+  gems?: number;
+  premiumCapsules?: number;
+  incomeBoostMinutes?: number;
+  luckyBoostMinutes?: number;
+  mutationStormTickets?: number;
+};
+
+export type StarsProduct = {
+  id: string;
+  section: "capsules" | "gems" | "boosts" | "limited";
+  title: string;
+  description: string;
+  starsPrice: number;
+  rewardLabel: string;
+  reward: ProductReward;
+  enabled: boolean;
+  badge?: "Best Value" | "Limited";
+};
+
+export type PurchaseRecord = {
+  id: string;
+  playerId: string;
+  productId: string;
+  starsPrice: number;
+  status: "invoice_created" | "mock_completed";
+  createdAt: string;
+  completedAt: string | null;
+};
+
 export type ReferralMilestone = {
   invites: number;
   label: string;
@@ -96,6 +126,16 @@ type MilestoneClaimRow = {
   milestone: number;
 };
 
+type PurchaseRow = {
+  id: string;
+  player_id: string;
+  product_id: string;
+  stars_price: number;
+  status: "invoice_created" | "mock_completed";
+  created_at: string;
+  completed_at: string | null;
+};
+
 export const REFERRAL_MILESTONES: ReferralMilestone[] = [
   { invites: 1, reward: { gems: 2, premiumCapsules: 1 }, label: "2 gems + premium capsule" },
   { invites: 3, reward: { gems: 5, eggs: 2 }, label: "5 gems + 2 capsules" },
@@ -105,6 +145,82 @@ export const REFERRAL_MILESTONES: ReferralMilestone[] = [
 ];
 
 const INVITED_PLAYER_REWARD: ReferralReward = { premiumCapsules: 1 };
+
+const PRODUCTS: StarsProduct[] = [
+  {
+    id: "premium_capsules_3",
+    section: "capsules",
+    title: "3 Premium Capsules",
+    description: "Boosted hatch odds with stronger Epic+ chances.",
+    starsPrice: 99,
+    rewardLabel: "3 premium capsules",
+    reward: { premiumCapsules: 3 },
+    enabled: true,
+  },
+  {
+    id: "premium_capsules_10",
+    section: "capsules",
+    title: "10 Premium Capsules",
+    description: "Best for collection pushes without making free play obsolete.",
+    starsPrice: 279,
+    rewardLabel: "10 premium capsules",
+    badge: "Best Value",
+    reward: { premiumCapsules: 10 },
+    enabled: true,
+  },
+  {
+    id: "gems_100",
+    section: "gems",
+    title: "100 Gems",
+    description: "A clean gem refill for breeding and upgrades.",
+    starsPrice: 149,
+    rewardLabel: "100 gems",
+    reward: { gems: 100 },
+    enabled: true,
+  },
+  {
+    id: "gems_500",
+    section: "gems",
+    title: "500 Gems",
+    description: "Large gem bundle for long breeding sessions.",
+    starsPrice: 599,
+    rewardLabel: "500 gems",
+    badge: "Best Value",
+    reward: { gems: 500 },
+    enabled: true,
+  },
+  {
+    id: "double_income_24h",
+    section: "boosts",
+    title: "Double Income 24h",
+    description: "Doubles idle output for a day. Helpful, never mandatory.",
+    starsPrice: 229,
+    rewardLabel: "24h income boost",
+    reward: { incomeBoostMinutes: 24 * 60 },
+    enabled: true,
+  },
+  {
+    id: "lucky_hatch_1h",
+    section: "boosts",
+    title: "Lucky Hatch 1h",
+    description: "Raises rare odds during focused hatching.",
+    starsPrice: 179,
+    rewardLabel: "1h lucky hatch",
+    reward: { luckyBoostMinutes: 60 },
+    enabled: true,
+  },
+  {
+    id: "mutation_storm_ticket",
+    section: "limited",
+    title: "Mutation Storm Ticket",
+    description: "Triggers a Mutation Storm event for better Epic+ odds.",
+    starsPrice: 249,
+    rewardLabel: "1 storm ticket",
+    badge: "Limited",
+    reward: { mutationStormTickets: 1 },
+    enabled: true,
+  },
+];
 
 const databasePath = process.env.SQLITE_PATH ?? join(process.cwd(), "data", "neon-hatch.db");
 
@@ -162,9 +278,21 @@ db.exec(`
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS purchases (
+    id TEXT PRIMARY KEY,
+    player_id TEXT NOT NULL,
+    product_id TEXT NOT NULL,
+    stars_price INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    completed_at TEXT,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+  );
+
   CREATE INDEX IF NOT EXISTS idx_players_referral_code ON players(referral_code);
   CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_player_id);
   CREATE INDEX IF NOT EXISTS idx_referral_claims_player ON referral_milestone_claims(player_id);
+  CREATE INDEX IF NOT EXISTS idx_purchases_player ON purchases(player_id);
 `);
 
 const mapPlayerRow = (row: PlayerRow): PlayerRecord => ({
@@ -181,6 +309,16 @@ const mapPlayerRow = (row: PlayerRow): PlayerRecord => ({
 
 const getStableReferralCode = (playerId: string) =>
   createHash("sha256").update(`neon-hatch:${playerId}`).digest("hex").slice(0, 10).toUpperCase();
+
+const mapPurchaseRow = (row: PurchaseRow): PurchaseRecord => ({
+  id: row.id,
+  playerId: row.player_id,
+  productId: row.product_id,
+  starsPrice: row.stars_price,
+  status: row.status,
+  createdAt: row.created_at,
+  completedAt: row.completed_at,
+});
 
 export const getPlayerId = (telegramUser: TelegramUser) => `tg_${telegramUser.id}`;
 
@@ -278,6 +416,50 @@ export const writeSave = (playerId: string, gameState: unknown): CloudSaveRecord
     gameState,
     updatedAt: now,
   };
+};
+
+export const getProducts = () => PRODUCTS.filter((product) => product.enabled);
+
+export const getProductById = (productId: string) => PRODUCTS.find((product) => product.id === productId && product.enabled) ?? null;
+
+export const createPurchaseInvoice = (playerId: string, productId: string): { product: StarsProduct; purchase: PurchaseRecord } | null => {
+  const player = findPlayerById(playerId);
+  const product = getProductById(productId);
+  if (!player || !product) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const purchaseId = randomUUID();
+  db.prepare(
+    `
+      INSERT INTO purchases (id, player_id, product_id, stars_price, status, created_at, completed_at)
+      VALUES (?, ?, ?, ?, 'invoice_created', ?, NULL)
+    `,
+  ).run(purchaseId, player.id, product.id, product.starsPrice, now);
+
+  const row = db.prepare("SELECT * FROM purchases WHERE id = ?").get(purchaseId) as PurchaseRow;
+  return { product, purchase: mapPurchaseRow(row) };
+};
+
+export const completeMockPurchase = (playerId: string, productId: string): { product: StarsProduct; purchase: PurchaseRecord } | null => {
+  const player = findPlayerById(playerId);
+  const product = getProductById(productId);
+  if (!player || !product) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const purchaseId = randomUUID();
+  db.prepare(
+    `
+      INSERT INTO purchases (id, player_id, product_id, stars_price, status, created_at, completed_at)
+      VALUES (?, ?, ?, ?, 'mock_completed', ?, ?)
+    `,
+  ).run(purchaseId, player.id, product.id, product.starsPrice, now, now);
+
+  const row = db.prepare("SELECT * FROM purchases WHERE id = ?").get(purchaseId) as PurchaseRow;
+  return { product, purchase: mapPurchaseRow(row) };
 };
 
 export const getReferralStats = (playerId: string): ReferralStats | null => {
@@ -401,12 +583,7 @@ export const registerReferral = (playerId: string, referralCode: string): Referr
   };
 };
 
-export const simulateReferralForPlayer = (inviterPlayerId: string): ReferralRegisterResult => {
-  const inviter = findPlayerById(inviterPlayerId);
-  if (!inviter) {
-    return { ok: true, registered: false, rewardPending: false, reason: "unknown_code" };
-  }
-
+const createSimulatedReferral = (inviter: PlayerRecord): ReferralRegisterResult => {
   const now = new Date().toISOString();
   const invitedPlayerId = `dev_ref_${randomUUID()}`;
   const referralId = randomUUID();
@@ -421,7 +598,7 @@ export const simulateReferralForPlayer = (inviterPlayerId: string): ReferralRegi
       `,
     ).run(
       invitedPlayerId,
-      `fake_${Date.now()}`,
+      `fake_${randomUUID().slice(0, 12)}`,
       "Simulated",
       getStableReferralCode(invitedPlayerId),
       inviter.id,
@@ -446,4 +623,22 @@ export const simulateReferralForPlayer = (inviterPlayerId: string): ReferralRegi
     inviterPlayerId: inviter.id,
     invitedReward: INVITED_PLAYER_REWARD,
   };
+};
+
+export const simulateReferralForPlayer = (inviterPlayerId: string): ReferralRegisterResult => {
+  const inviter = findPlayerById(inviterPlayerId);
+  if (!inviter) {
+    return { ok: true, registered: false, rewardPending: false, reason: "unknown_code" };
+  }
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return createSimulatedReferral(inviter);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Failed to create simulated referral.");
 };
