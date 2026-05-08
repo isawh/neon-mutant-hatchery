@@ -26,7 +26,7 @@ Set `BOT_TOKEN` to the token from BotFather.
 NODE_ENV=development
 PORT=8080
 BOT_TOKEN=123456:replace_with_your_telegram_bot_token
-CORS_ORIGIN=http://127.0.0.1:5174
+FRONTEND_URL=http://127.0.0.1:5174
 SQLITE_PATH=./data/neon-hatch.db
 ```
 
@@ -48,6 +48,39 @@ Start compiled server:
 npm start
 ```
 
+The server listens on `0.0.0.0` and uses `process.env.PORT || 8080`, which is required by Render and works locally.
+
+## Render Deploy
+
+Create a new Render Web Service from this repository.
+
+Recommended settings:
+
+- Root directory: `backend`
+- Runtime: Node
+- Build command: `npm install && npm run build`
+- Start command: `npm start`
+
+Environment variables:
+
+```env
+NODE_ENV=production
+BOT_TOKEN=123456:replace_with_your_telegram_bot_token
+FRONTEND_URL=https://your-vercel-project.vercel.app
+SQLITE_PATH=./data/neon-hatch.db
+```
+
+Render sets `PORT` automatically. Do not hardcode it.
+
+After deploy:
+
+- Open `https://your-render-service.onrender.com/health` and confirm `{ "ok": true }`.
+- Set frontend `VITE_API_URL` to the Render backend URL.
+- Redeploy the Vercel frontend.
+- In Telegram, launch the Mini App and confirm auth, cloud save, referrals, and mock payments reach the backend.
+
+SQLite note: this database is useful for development and an early hosted prototype, but it is not ideal for production scaling on Render. Render instances can restart and local disk behavior depends on the selected plan. Before launch, move to a managed database such as Postgres with migrations and backups.
+
 ## Endpoints
 
 ## Database
@@ -58,7 +91,7 @@ The backend uses SQLite for development persistence. By default the database fil
 backend/data/neon-hatch.db
 ```
 
-You can override it with `SQLITE_PATH`. The server creates the database directory, file, and tables on startup.
+You can override it with `SQLITE_PATH`. The server creates the database directory, file, and tables on startup. The default path uses `process.cwd()` so it resolves safely inside `backend` locally and on Render when `backend` is the service root.
 
 Tables:
 

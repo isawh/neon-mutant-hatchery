@@ -23,11 +23,43 @@ config();
 
 const app = express();
 const port = Number(process.env.PORT ?? 8080);
+const host = "0.0.0.0";
 const botToken = process.env.BOT_TOKEN ?? "";
 const nodeEnv = process.env.NODE_ENV ?? "development";
-const corsOrigin = process.env.CORS_ORIGIN ?? "*";
+const frontendUrl = process.env.FRONTEND_URL ?? "";
 
-app.use(cors({ origin: corsOrigin === "*" ? true : corsOrigin }));
+const allowedOrigins = new Set(
+  [
+    frontendUrl,
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+  ].filter(Boolean),
+);
+
+app.use(
+  cors({
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      try {
+        const hostname = new URL(origin).hostname;
+        if (hostname.endsWith(".vercel.app") || hostname.endsWith(".telegram.org")) {
+          callback(null, true);
+          return;
+        }
+      } catch {
+        // Fall through to rejection.
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+  }),
+);
 app.use(express.json({ limit: "1mb" }));
 
 const safeJsonParse = <T>(value: string | null): T | null => {
@@ -294,6 +326,6 @@ app.post("/api/payments/mock-complete", (request: any, response: any) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Neon Hatch backend listening on port ${port}`);
+app.listen(port, host, () => {
+  console.log(`Neon Hatch backend listening on ${host}:${port}`);
 });
