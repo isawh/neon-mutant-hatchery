@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { createHash, randomUUID } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { config } from "dotenv";
 import { existsSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
@@ -310,6 +310,8 @@ const mapPlayerRow = (row: PlayerRow): PlayerRecord => ({
 const getStableReferralCode = (playerId: string) =>
   createHash("sha256").update(`neon-hatch:${playerId}`).digest("hex").slice(0, 10).toUpperCase();
 
+const randomId = () => randomBytes(16).toString("hex");
+
 const mapPurchaseRow = (row: PurchaseRow): PurchaseRecord => ({
   id: row.id,
   playerId: row.player_id,
@@ -430,7 +432,7 @@ export const createPurchaseInvoice = (playerId: string, productId: string): { pr
   }
 
   const now = new Date().toISOString();
-  const purchaseId = randomUUID();
+  const purchaseId = randomId();
   db.prepare(
     `
       INSERT INTO purchases (id, player_id, product_id, stars_price, status, created_at, completed_at)
@@ -450,7 +452,7 @@ export const completeMockPurchase = (playerId: string, productId: string): { pro
   }
 
   const now = new Date().toISOString();
-  const purchaseId = randomUUID();
+  const purchaseId = randomId();
   db.prepare(
     `
       INSERT INTO purchases (id, player_id, product_id, stars_price, status, created_at, completed_at)
@@ -551,7 +553,7 @@ export const registerReferral = (playerId: string, referralCode: string): Referr
   }
 
   const now = new Date().toISOString();
-  const referralId = randomUUID();
+  const referralId = randomId();
 
   const transaction = db.transaction(() => {
     db.prepare("UPDATE players SET referred_by = ?, updated_at = ? WHERE id = ? AND referred_by IS NULL").run(
@@ -585,8 +587,8 @@ export const registerReferral = (playerId: string, referralCode: string): Referr
 
 const createSimulatedReferral = (inviter: PlayerRecord): ReferralRegisterResult => {
   const now = new Date().toISOString();
-  const invitedPlayerId = `dev_ref_${randomUUID()}`;
-  const referralId = randomUUID();
+  const invitedPlayerId = `dev_ref_${randomId()}`;
+  const referralId = randomId();
 
   const transaction = db.transaction(() => {
     db.prepare(
@@ -598,7 +600,7 @@ const createSimulatedReferral = (inviter: PlayerRecord): ReferralRegisterResult 
       `,
     ).run(
       invitedPlayerId,
-      `fake_${randomUUID().slice(0, 12)}`,
+      `fake_${randomId().slice(0, 12)}`,
       "Simulated",
       getStableReferralCode(invitedPlayerId),
       inviter.id,

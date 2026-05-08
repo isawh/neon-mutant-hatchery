@@ -17,7 +17,7 @@ import {
   writeSave,
   type PlayerRecord,
   type TelegramUser,
-} from "./db";
+} from "./db.js";
 
 config();
 
