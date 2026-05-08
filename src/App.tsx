@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   DEV_SAVE_RESET_VERSION,
+  BREED_COIN_COST,
+  BREED_GEM_COST,
   INITIAL_STATE,
   INVITE_MILESTONES,
   LIMITED_OFFERS,
@@ -18,8 +20,11 @@ import {
   breedCreatures,
   buyLimitedOffer,
   calculateOfflineIncome,
+  claimAchievementReward,
+  claimAlbumReward,
   canClaimDailyReward,
   claimDailyReward,
+  claimFullAlbumReward,
   claimFreeCapsule,
   claimMissionReward,
   claimTutorialReward,
@@ -27,6 +32,9 @@ import {
   completeTutorialTask,
   ensureTutorialState,
   ensureLiveOpsState,
+  ensureProgressionState,
+  getFullAlbumProgress,
+  getRarityAlbumProgress,
   getBoostedIncomePerMinute,
   getCreatureIncomePerMinute,
   getHatchCost,
@@ -65,7 +73,7 @@ import {
   registerIncomingReferral,
   syncReferralStats,
 } from "./services/referralService";
-import type { Creature, GameState, LimitedOfferId, MissionId, Rarity, TabId, TutorialTaskId } from "./types";
+import type { AchievementId, Creature, GameState, LimitedOfferId, MissionId, Rarity, TabId, TutorialTaskId } from "./types";
 import "./styles.css";
 
 const formatNumber = (value: number) => Math.floor(value).toLocaleString("en-US");
@@ -86,6 +94,8 @@ const formatReward = (reward: GameState["tutorialTasks"][number]["reward"]) =>
     reward.gems ? `${formatNumber(reward.gems)} gems` : "",
     reward.eggs ? `${formatNumber(reward.eggs)} capsules` : "",
     reward.premiumCapsules ? `${formatNumber(reward.premiumCapsules)} premium` : "",
+    reward.incomeBoostMinutes ? `${formatNumber(reward.incomeBoostMinutes)}m income` : "",
+    reward.luckyBoostMinutes ? `${formatNumber(reward.luckyBoostMinutes)}m luck` : "",
   ]
     .filter(Boolean)
     .join(" + ");
@@ -169,13 +179,18 @@ const playSecretSoundPlaceholder = (creature: Creature) => {
 const loadPlayableState = () => {
   try {
     return {
-      state: applyStarterRewards(
-        ensureReferralCode(ensureLiveOpsState(applyLoginStreak(calculateOfflineIncome(loadGameState()).state))),
+      state: ensureProgressionState(
+        applyStarterRewards(
+          ensureReferralCode(ensureLiveOpsState(applyLoginStreak(calculateOfflineIncome(loadGameState()).state))),
+        ),
       ),
       error: false,
     };
   } catch {
-    return { state: applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() }), error: true };
+    return {
+      state: ensureProgressionState(applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() })),
+      error: true,
+    };
   }
 };
 
@@ -413,6 +428,31 @@ export default function App() {
   const discoveredCount = new Set(state.discoveredCreatureNames).size;
   const undiscoveredCount = Math.max(0, totalSpecies - discoveredCount);
   const collectionPercent = totalSpecies ? Math.min(100, Math.round((discoveredCount / totalSpecies) * 100)) : 0;
+  const progressionState = useMemo(() => ensureProgressionState(state), [state]);
+  const albumGroups = useMemo(
+    () => RARITY_ORDER.map((rarity) => getRarityAlbumProgress(progressionState, rarity)),
+    [progressionState],
+  );
+  const fullAlbum = useMemo(() => getFullAlbumProgress(progressionState), [progressionState]);
+  const visibleAchievements = useMemo(
+    () =>
+      [...progressionState.achievements].sort((a, b) => {
+        const readyDelta =
+          Number(b.progress >= b.target && !b.claimed) - Number(a.progress >= a.target && !a.claimed);
+        if (readyDelta) {
+          return readyDelta;
+        }
+        const claimedDelta = Number(a.claimed) - Number(b.claimed);
+        if (claimedDelta) {
+          return claimedDelta;
+        }
+        return b.progress / b.target - a.progress / a.target;
+      }),
+    [progressionState.achievements],
+  );
+  const unclaimedAchievementCount = visibleAchievements.filter(
+    (achievement) => achievement.progress >= achievement.target && !achievement.claimed,
+  ).length;
 
   const totalIncome = useMemo(() => getTotalIncomePerMinute(state.creatures), [state.creatures]);
   const boostedIncome = useMemo(() => getBoostedIncomePerMinute(state), [state, now]);
@@ -485,7 +525,7 @@ export default function App() {
           ),
         ),
       );
-      setState(loginState);
+      setState(ensureProgressionState(loginState));
       setOfflineEarned(loaded.earned);
       setShowOfflineModal(loaded.earned > 0);
       if (incomingReferral && loginState.referralRewardClaimed) {
@@ -496,7 +536,7 @@ export default function App() {
       }
       setStateLoadError(false);
     } catch {
-      setState(applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() }));
+      setState(ensureProgressionState(applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() })));
       setOfflineEarned(0);
       setShowOfflineModal(false);
       setStateLoadError(true);
@@ -535,7 +575,7 @@ export default function App() {
       haptic.error();
       return;
     }
-    setState(next);
+    setState(ensureProgressionState(next));
     success();
   };
 
@@ -554,6 +594,27 @@ export default function App() {
     spendOrWarn(claimTutorialReward(state, taskId), () => {
       notify("Beginner quest reward claimed", "good");
       haptic.success();
+    });
+  };
+
+  const handleAchievementClaim = (achievementId: AchievementId) => {
+    spendOrWarn(claimAchievementReward(state, achievementId, now), () => {
+      notify("Achievement reward claimed", "good");
+      haptic.success();
+    });
+  };
+
+  const handleAlbumClaim = (rarity: Rarity) => {
+    spendOrWarn(claimAlbumReward(state, rarity, now), () => {
+      notify(`${rarity} album reward claimed`, "good");
+      haptic.success();
+    });
+  };
+
+  const handleFullAlbumClaim = () => {
+    spendOrWarn(claimFullAlbumReward(state, now), () => {
+      notify("Full collection reward claimed", "event");
+      haptic.impact("heavy");
     });
   };
 
@@ -586,7 +647,7 @@ export default function App() {
     }
 
     track("hatch_started", { premium: state.premiumCapsules > 0 });
-    setState(completeTutorialTask(result.state, "first_hatch"));
+    setState(ensureProgressionState(completeTutorialTask(result.state, "first_hatch")));
     setLastHatched(null);
     setRevealRarity(result.creature.rarity);
     setScreenFlash(null);
@@ -622,7 +683,7 @@ export default function App() {
       haptic.error();
       return;
     }
-    setState(result.state);
+    setState(ensureProgressionState(result.state));
     setLastHatched(result.creature);
     setRevealKey((key) => key + 1);
     if (isFlexRarity(result.creature.rarity)) {
@@ -645,7 +706,7 @@ export default function App() {
   };
 
   const addMockPurchase = (patch: Partial<GameState>) => {
-    setState((current) => ({ ...current, ...patch, lastActiveAt: Date.now() }));
+    setState((current) => ensureProgressionState({ ...current, ...patch, lastActiveAt: Date.now() }));
     track("shop_purchase_mocked", { source: "mock_shop" });
     haptic.success();
   };
@@ -677,7 +738,7 @@ export default function App() {
   };
 
   const handleFavorite = (creatureId: string) => {
-    setState((current) => toggleFavoriteCreature(current, creatureId));
+    setState((current) => ensureProgressionState(toggleFavoriteCreature(current, creatureId)));
     haptic.selection();
   };
 
@@ -695,7 +756,7 @@ export default function App() {
   const handleShareReferral = () => {
     const text = "Hatch neon mutants with me. Use my invite and get a premium capsule.";
     shareTelegramInvite(referralLink, text);
-    setState((current) => recordInviteShare(current));
+    setState((current) => ensureProgressionState(recordInviteShare(current)));
     notify("Invite sent: +1 gem", "good");
     track("referral_shared", { code: state.referralCode });
     haptic.impact("medium");
@@ -741,27 +802,29 @@ export default function App() {
       return;
     }
 
-    setState((current) => ({
-      ...current,
-      gems: current.gems + (purchase.product.reward.gems ?? 0),
-      premiumCapsules: current.premiumCapsules + (purchase.product.reward.premiumCapsules ?? 0),
-      mutationStormTickets: current.mutationStormTickets + (purchase.product.reward.mutationStormTickets ?? 0),
-      activeEvent: purchase.product.reward.mutationStormTickets
-        ? {
-            id: "mutation_storm",
-            title: "Mutation Storm",
-            description: "Ticket activated: Epic+ odds are boosted for this session.",
-            endsAt: now + 60 * 60 * 1000,
-          }
-        : current.activeEvent,
-      incomeBoostUntil: purchase.product.reward.incomeBoostMinutes
-        ? now + purchase.product.reward.incomeBoostMinutes * 60 * 1000
-        : current.incomeBoostUntil,
-      luckyBoostUntil: purchase.product.reward.luckyBoostMinutes
-        ? now + purchase.product.reward.luckyBoostMinutes * 60 * 1000
-        : current.luckyBoostUntil,
-      lastActiveAt: now,
-    }));
+    setState((current) =>
+      ensureProgressionState({
+        ...current,
+        gems: current.gems + (purchase.product.reward.gems ?? 0),
+        premiumCapsules: current.premiumCapsules + (purchase.product.reward.premiumCapsules ?? 0),
+        mutationStormTickets: current.mutationStormTickets + (purchase.product.reward.mutationStormTickets ?? 0),
+        activeEvent: purchase.product.reward.mutationStormTickets
+          ? {
+              id: "mutation_storm",
+              title: "Mutation Storm",
+              description: "Ticket activated: Epic+ odds are boosted for this session.",
+              endsAt: now + 60 * 60 * 1000,
+            }
+          : current.activeEvent,
+        incomeBoostUntil: purchase.product.reward.incomeBoostMinutes
+          ? now + purchase.product.reward.incomeBoostMinutes * 60 * 1000
+          : current.incomeBoostUntil,
+        luckyBoostUntil: purchase.product.reward.luckyBoostMinutes
+          ? now + purchase.product.reward.luckyBoostMinutes * 60 * 1000
+          : current.luckyBoostUntil,
+        lastActiveAt: now,
+      }),
+    );
     setPendingProductId(null);
     notify(`${purchase.product.title} mocked`, "good");
     track("shop_purchase_mocked", { productId });
@@ -791,7 +854,7 @@ export default function App() {
             className="icon-button"
             aria-label="Reset game"
             onClick={() => {
-              setState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState()))));
+              setState(ensureProgressionState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState())))));
               setOnboardingStep(0);
               setLastHatched(null);
               setRevealRarity(null);
@@ -1013,6 +1076,12 @@ export default function App() {
                 <span>{undiscoveredCount} undiscovered</span>
               </div>
             </div>
+            <AlbumPanel
+              groups={albumGroups}
+              fullAlbum={fullAlbum}
+              onClaimGroup={handleAlbumClaim}
+              onClaimFull={handleFullAlbumClaim}
+            />
             {state.creatures.length ? (
               <>
                 <div className="collection-toolbar">
@@ -1126,10 +1195,10 @@ export default function App() {
             </div>
             <button
               className="primary-button"
-              disabled={breedSelection.length < 2 || state.coins < 95 || state.gems < 1}
+              disabled={breedSelection.length < 2 || state.coins < BREED_COIN_COST || state.gems < BREED_GEM_COST}
               onClick={handleBreed}
             >
-              Breed - 95 coins + 1 gem
+              Breed - {formatNumber(BREED_COIN_COST)} coins + {formatNumber(BREED_GEM_COST)} gem
             </button>
             <div className="creature-grid compact-grid">
               {state.creatures.map((creature) => (
@@ -1238,6 +1307,7 @@ export default function App() {
                 value={formatNumber(Math.max(0, ...state.creatures.map((item) => item.generation)))}
               />
             </div>
+            <AchievementPanel achievements={visibleAchievements} readyCount={unclaimedAchievementCount} onClaim={handleAchievementClaim} />
             <div className="referral-panel">
               <div className="section-heading">
                 <div>
@@ -1325,7 +1395,9 @@ export default function App() {
               <button
                 className="mini-button"
                 onClick={() => {
-                  setState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState()))));
+                  setState(
+                    ensureProgressionState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState())))),
+                  );
                   setOnboardingStep(0);
                   setLastHatched(null);
                   setRevealRarity(null);
@@ -1342,7 +1414,11 @@ export default function App() {
               <button
                 className="mini-button"
                 onClick={() => {
-                  setState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(forceResetGameStateNow()))));
+                  setState(
+                    ensureProgressionState(
+                      applyStarterRewards(ensureReferralCode(ensureLiveOpsState(forceResetGameStateNow()))),
+                    ),
+                  );
                   setAnalyticsCount(getAnalyticsEventCount());
                   setOnboardingStep(0);
                   setLastHatched(null);
@@ -1360,7 +1436,7 @@ export default function App() {
               <button
                 className="mini-button"
                 onClick={() => {
-                  setState((current) => resetOnboardingProgress(ensureTutorialState(current)));
+                  setState((current) => ensureProgressionState(resetOnboardingProgress(ensureTutorialState(current))));
                   setOnboardingStep(0);
                   notify("Onboarding reset", "event");
                   haptic.impact("medium");
@@ -1382,11 +1458,13 @@ export default function App() {
               haptic.selection();
               return;
             }
-            setState((current) => ({
-              ...applyStarterRewards(ensureTutorialState(current)),
-              onboardingCompleted: true,
-              lastActiveAt: Date.now(),
-            }));
+            setState((current) =>
+              ensureProgressionState({
+                ...applyStarterRewards(ensureTutorialState(current)),
+                onboardingCompleted: true,
+                lastActiveAt: Date.now(),
+              }),
+            );
             notify(
               state.starterRewardsClaimed ? "Onboarding completed" : "Starter kit loaded: 3 capsules, 100 coins, 5 gems",
               "good",
@@ -1525,6 +1603,116 @@ export default function App() {
       </nav>
       </div>
     </main>
+  );
+}
+
+function AlbumPanel({
+  groups,
+  fullAlbum,
+  onClaimGroup,
+  onClaimFull,
+}: {
+  groups: ReturnType<typeof getRarityAlbumProgress>[];
+  fullAlbum: ReturnType<typeof getFullAlbumProgress>;
+  onClaimGroup: (rarity: Rarity) => void;
+  onClaimFull: () => void;
+}) {
+  return (
+    <section className="album-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Collection album</p>
+          <h2>Rarity research</h2>
+        </div>
+        <span>
+          {fullAlbum.discovered}/{fullAlbum.total}
+        </span>
+      </div>
+      <div className="album-grid">
+        {groups.map((group) => {
+          const ready = group.complete && !group.claimed;
+          const percent = Math.min(100, Math.round((group.discovered / group.total) * 100));
+          return (
+            <article key={group.rarity} className={`album-row ${RARITY_CONFIG[group.rarity].className} ${ready ? "ready" : ""}`}>
+              <div className="album-row-top">
+                <strong>{group.rarity}</strong>
+                <span>
+                  {group.discovered}/{group.total}
+                </span>
+              </div>
+              <div className="completion-bar">
+                <i style={{ width: `${percent}%` }} />
+              </div>
+              <div className="album-row-bottom">
+                <span>{formatReward(group.reward)}</span>
+                <button className="mini-button" disabled={!ready} onClick={() => onClaimGroup(group.rarity)}>
+                  {group.claimed ? "Claimed" : ready ? "Claim" : `${percent}%`}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className={`full-album-row ${fullAlbum.complete && !fullAlbum.claimed ? "ready tutorial-glow" : ""}`}>
+        <div>
+          <strong>Full collection</strong>
+          <p>{formatReward(fullAlbum.reward)}</p>
+        </div>
+        <button className="mini-button" disabled={!fullAlbum.complete || fullAlbum.claimed} onClick={onClaimFull}>
+          {fullAlbum.claimed ? "Claimed" : fullAlbum.complete ? "Claim" : `${fullAlbum.discovered}/${fullAlbum.total}`}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AchievementPanel({
+  achievements,
+  readyCount,
+  onClaim,
+}: {
+  achievements: GameState["achievements"];
+  readyCount: number;
+  onClaim: (achievementId: AchievementId) => void;
+}) {
+  return (
+    <section className="achievement-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Achievements</p>
+          <h2>Long-term goals</h2>
+        </div>
+        <span>{readyCount} ready</span>
+      </div>
+      <div className="achievement-list">
+        {achievements.map((achievement) => {
+          const ready = achievement.progress >= achievement.target && !achievement.claimed;
+          const percent = Math.min(100, Math.round((achievement.progress / achievement.target) * 100));
+          return (
+            <article key={achievement.id} className={`achievement-row ${ready ? "ready" : ""}`}>
+              <div className="achievement-copy">
+                <strong>{achievement.title}</strong>
+                <p>{achievement.description}</p>
+              </div>
+              <div className="achievement-progress">
+                <div className="completion-bar">
+                  <i style={{ width: `${percent}%` }} />
+                </div>
+                <span>
+                  {formatNumber(achievement.progress)}/{formatNumber(achievement.target)}
+                </span>
+              </div>
+              <div className="achievement-reward">
+                <span>{formatReward(achievement.reward)}</span>
+                <button className="mini-button" disabled={!ready} onClick={() => onClaim(achievement.id)}>
+                  {achievement.claimed ? "Claimed" : ready ? "Claim" : `${percent}%`}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

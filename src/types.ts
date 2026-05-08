@@ -8,9 +8,40 @@ export type MissionId = "hatch_3" | "upgrade_1" | "breed_1" | "collect_250";
 
 export type TutorialTaskId = "first_hatch" | "open_collection" | "upgrade_creature" | "claim_daily" | "open_shop";
 
+export type AchievementId =
+  | "hatch_10"
+  | "hatch_50"
+  | "hatch_100"
+  | "own_5"
+  | "own_20"
+  | "own_50"
+  | "first_rare"
+  | "first_epic"
+  | "first_legendary"
+  | "first_mythic"
+  | "first_secret"
+  | "level_5"
+  | "level_10"
+  | "level_25"
+  | "breed_1"
+  | "breed_5"
+  | "breed_20"
+  | "invite_1"
+  | "invite_3"
+  | "invite_10";
+
 export type RareEventId = "glitched_capsule" | "radiant_surge" | "mutation_storm";
 
 export type LimitedOfferId = "premium_capsule" | "double_income" | "lucky_hatch";
+
+export type ProgressionReward = {
+  coins?: number;
+  gems?: number;
+  eggs?: number;
+  premiumCapsules?: number;
+  incomeBoostMinutes?: number;
+  luckyBoostMinutes?: number;
+};
 
 export type DailyMission = {
   id: MissionId;
@@ -18,12 +49,7 @@ export type DailyMission = {
   progress: number;
   target: number;
   claimed: boolean;
-  reward: {
-    coins?: number;
-    gems?: number;
-    eggs?: number;
-    premiumCapsules?: number;
-  };
+  reward: ProgressionReward;
 };
 
 export type TutorialTask = {
@@ -32,12 +58,17 @@ export type TutorialTask = {
   body: string;
   completed: boolean;
   claimed: boolean;
-  reward: {
-    coins?: number;
-    gems?: number;
-    eggs?: number;
-    premiumCapsules?: number;
-  };
+  reward: ProgressionReward;
+};
+
+export type Achievement = {
+  id: AchievementId;
+  title: string;
+  description: string;
+  progress: number;
+  target: number;
+  claimed: boolean;
+  reward: ProgressionReward;
 };
 
 export type ActiveRareEvent = {
@@ -75,6 +106,7 @@ export type GameState = {
   creatures: Creature[];
   hatchStreak: number;
   totalHatches: number;
+  totalBreeds: number;
   discoveredCreatureNames: string[];
   favoriteCreatureIds: string[];
   referralCode: string;
@@ -100,6 +132,9 @@ export type GameState = {
   onboardingCompleted: boolean;
   starterRewardsClaimed: boolean;
   tutorialTasks: TutorialTask[];
+  achievements: Achievement[];
+  claimedAlbumRewards: Rarity[];
+  fullAlbumRewardClaimed: boolean;
   lastActiveAt: number;
 };
 

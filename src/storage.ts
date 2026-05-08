@@ -1,4 +1,5 @@
 import {
+  ACHIEVEMENTS,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
   INITIAL_STATE,
@@ -10,6 +11,8 @@ import {
 import { clearAnalyticsEvents } from "./services/analyticsService";
 import type {
   ActiveRareEvent,
+  Achievement,
+  AchievementId,
   Creature,
   DailyMission,
   GameState,
@@ -72,6 +75,9 @@ const isLimitedOfferId = (value: unknown): value is LimitedOfferId =>
 
 const isTutorialTaskId = (value: unknown): value is TutorialTaskId =>
   typeof value === "string" && TUTORIAL_TASKS.some((task) => task.id === value);
+
+const isAchievementId = (value: unknown): value is AchievementId =>
+  typeof value === "string" && ACHIEVEMENTS.some((achievement) => achievement.id === value);
 
 const getTraitMultiplier = (creature: Creature) =>
   creature.passiveTraits.reduce(
@@ -162,6 +168,28 @@ const normalizeTutorialTasks = (value: unknown): TutorialTask[] => {
   return TUTORIAL_TASKS.map((task) => taskMap.get(task.id) ?? { ...task });
 };
 
+const normalizeAchievements = (value: unknown): Achievement[] => {
+  const parsedAchievements = Array.isArray(value) ? value : [];
+  const achievementMap = new Map<AchievementId, Achievement>();
+
+  parsedAchievements.forEach((item) => {
+    if (!isRecord(item) || !isAchievementId(item.id)) {
+      return;
+    }
+    const base = ACHIEVEMENTS.find((achievement) => achievement.id === item.id);
+    if (!base) {
+      return;
+    }
+    achievementMap.set(item.id, {
+      ...base,
+      progress: typeof item.progress === "number" ? item.progress : 0,
+      claimed: typeof item.claimed === "boolean" ? item.claimed : false,
+    });
+  });
+
+  return ACHIEVEMENTS.map((achievement) => achievementMap.get(achievement.id) ?? { ...achievement });
+};
+
 const normalizeActiveEvent = (value: unknown): ActiveRareEvent | null => {
   if (!isRecord(value)) {
     return null;
@@ -218,6 +246,7 @@ export const loadGameState = (): GameState => {
       creatures,
       hatchStreak: typeof parsed.hatchStreak === "number" ? parsed.hatchStreak : INITIAL_STATE.hatchStreak,
       totalHatches: typeof parsed.totalHatches === "number" ? parsed.totalHatches : creatures.length,
+      totalBreeds: typeof parsed.totalBreeds === "number" ? parsed.totalBreeds : INITIAL_STATE.totalBreeds,
       discoveredCreatureNames,
       favoriteCreatureIds: Array.isArray(parsed.favoriteCreatureIds)
         ? parsed.favoriteCreatureIds.filter((id) => typeof id === "string")
@@ -273,6 +302,17 @@ export const loadGameState = (): GameState => {
       starterRewardsClaimed:
         typeof parsed.starterRewardsClaimed === "boolean" ? parsed.starterRewardsClaimed : hasLegacyProgress,
       tutorialTasks: normalizeTutorialTasks(parsed.tutorialTasks),
+      achievements: normalizeAchievements(parsed.achievements),
+      claimedAlbumRewards: Array.isArray(parsed.claimedAlbumRewards)
+        ? parsed.claimedAlbumRewards.filter(
+            (rarity): rarity is Creature["rarity"] =>
+              typeof rarity === "string" && RARITY_ORDER.includes(rarity as Creature["rarity"]),
+          )
+        : INITIAL_STATE.claimedAlbumRewards,
+      fullAlbumRewardClaimed:
+        typeof parsed.fullAlbumRewardClaimed === "boolean"
+          ? parsed.fullAlbumRewardClaimed
+          : INITIAL_STATE.fullAlbumRewardClaimed,
       lastActiveAt:
         typeof parsed.lastActiveAt === "number" ? parsed.lastActiveAt : INITIAL_STATE.lastActiveAt,
     };

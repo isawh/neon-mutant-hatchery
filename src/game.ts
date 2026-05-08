@@ -1,6 +1,12 @@
 import {
+  ACHIEVEMENTS,
+  FULL_COLLECTION_REWARD,
+  RARITY_ALBUM_GOALS,
   DAILY_MISSION_POOL,
+  BREED_COIN_COST,
+  BREED_GEM_COST,
   FREE_CAPSULE_COOLDOWN_MS,
+  DAILY_REWARD,
   HATCH_BASE_COST,
   LIMITED_OFFERS,
   MAX_OFFLINE_MS,
@@ -15,6 +21,7 @@ import {
   STARTER_REWARD,
   TRAITS,
   TUTORIAL_TASKS,
+  UPGRADE_BASE_COST,
 } from "./constants";
 import type {
   ActiveRareEvent,
@@ -25,7 +32,9 @@ import type {
   LimitedOfferId,
   MissionId,
   PassiveTrait,
+  ProgressionReward,
   Rarity,
+  AchievementId,
   TutorialTaskId,
 } from "./types";
 
@@ -121,6 +130,152 @@ export const resetOnboardingProgress = (state: GameState): GameState => ({
   lastActiveAt: Date.now(),
 });
 
+const getAchievementProgress = (state: GameState, achievementId: AchievementId) => {
+  const maxLevel = Math.max(0, ...state.creatures.map((creature) => creature.level));
+  const hasRarity = (rarity: Rarity) => (state.creatures.some((creature) => creature.rarity === rarity) ? 1 : 0);
+
+  switch (achievementId) {
+    case "hatch_10":
+    case "hatch_50":
+    case "hatch_100":
+      return state.totalHatches;
+    case "own_5":
+    case "own_20":
+    case "own_50":
+      return state.creatures.length;
+    case "first_rare":
+      return hasRarity("Rare");
+    case "first_epic":
+      return hasRarity("Epic");
+    case "first_legendary":
+      return hasRarity("Legendary");
+    case "first_mythic":
+      return hasRarity("Mythic");
+    case "first_secret":
+      return hasRarity("Secret");
+    case "level_5":
+    case "level_10":
+    case "level_25":
+      return maxLevel;
+    case "breed_1":
+    case "breed_5":
+    case "breed_20":
+      return state.totalBreeds;
+    case "invite_1":
+    case "invite_3":
+    case "invite_10":
+      return state.inviteCount;
+    default:
+      return 0;
+  }
+};
+
+export const ensureProgressionState = (state: GameState): GameState => {
+  const existingAchievements = new Map(state.achievements.map((achievement) => [achievement.id, achievement]));
+  return {
+    ...state,
+    achievements: ACHIEVEMENTS.map((achievement) => {
+      const existing = existingAchievements.get(achievement.id);
+      return {
+        ...achievement,
+        progress: Math.min(achievement.target, getAchievementProgress(state, achievement.id)),
+        claimed: existing?.claimed ?? false,
+      };
+    }),
+    claimedAlbumRewards: state.claimedAlbumRewards.filter((rarity) => RARITY_ORDER.includes(rarity)),
+    fullAlbumRewardClaimed: Boolean(state.fullAlbumRewardClaimed),
+  };
+};
+
+export const getRarityAlbumProgress = (state: GameState, rarity: Rarity) => {
+  const discovered = new Set(
+    state.creatures.filter((creature) => creature.rarity === rarity).map((creature) => creature.name),
+  ).size;
+  const total = RARITY_ALBUM_GOALS[rarity].total;
+  return {
+    rarity,
+    discovered: Math.min(discovered, total),
+    total,
+    complete: discovered >= total,
+    claimed: state.claimedAlbumRewards.includes(rarity),
+    reward: RARITY_ALBUM_GOALS[rarity].reward,
+  };
+};
+
+export const getFullAlbumProgress = (state: GameState) => {
+  const groups = RARITY_ORDER.map((rarity) => getRarityAlbumProgress(state, rarity));
+  const discovered = groups.reduce((sum, group) => sum + group.discovered, 0);
+  const total = groups.reduce((sum, group) => sum + group.total, 0);
+  return {
+    discovered,
+    total,
+    complete: groups.every((group) => group.complete),
+    claimed: state.fullAlbumRewardClaimed,
+    reward: FULL_COLLECTION_REWARD,
+  };
+};
+
+const applyProgressionReward = (state: GameState, reward: ProgressionReward, now = Date.now()): GameState => ({
+  ...state,
+  coins: state.coins + (reward.coins ?? 0),
+  gems: state.gems + (reward.gems ?? 0),
+  eggs: state.eggs + (reward.eggs ?? 0),
+  premiumCapsules: state.premiumCapsules + (reward.premiumCapsules ?? 0),
+  incomeBoostUntil: reward.incomeBoostMinutes
+    ? Math.max(state.incomeBoostUntil, now) + reward.incomeBoostMinutes * 60 * 1000
+    : state.incomeBoostUntil,
+  luckyBoostUntil: reward.luckyBoostMinutes
+    ? Math.max(state.luckyBoostUntil, now) + reward.luckyBoostMinutes * 60 * 1000
+    : state.luckyBoostUntil,
+  lastActiveAt: now,
+});
+
+export const claimAchievementReward = (
+  state: GameState,
+  achievementId: AchievementId,
+  now = Date.now(),
+): GameState | null => {
+  const progressionState = ensureProgressionState(state);
+  const achievement = progressionState.achievements.find((item) => item.id === achievementId);
+  if (!achievement || achievement.claimed || achievement.progress < achievement.target) {
+    return null;
+  }
+
+  const rewarded = applyProgressionReward(progressionState, achievement.reward, now);
+  return ensureProgressionState({
+    ...rewarded,
+    achievements: rewarded.achievements.map((item) =>
+      item.id === achievementId ? { ...item, claimed: true } : item,
+    ),
+  });
+};
+
+export const claimAlbumReward = (state: GameState, rarity: Rarity, now = Date.now()): GameState | null => {
+  const progressionState = ensureProgressionState(state);
+  const album = getRarityAlbumProgress(progressionState, rarity);
+  if (!album.complete || album.claimed) {
+    return null;
+  }
+
+  return ensureProgressionState({
+    ...applyProgressionReward(progressionState, album.reward, now),
+    claimedAlbumRewards: [...progressionState.claimedAlbumRewards, rarity],
+  });
+};
+
+export const claimFullAlbumReward = (state: GameState, now = Date.now()): GameState | null => {
+  const progressionState = ensureProgressionState(state);
+  const album = getFullAlbumProgress(progressionState);
+  if (!album.complete || album.claimed) {
+    return null;
+  }
+
+  return ensureProgressionState({
+    ...applyProgressionReward(progressionState, album.reward, now),
+    fullAlbumRewardClaimed: true,
+  });
+};
+
 const progressMission = (state: GameState, missionId: MissionId, amount = 1): GameState => ({
   ...state,
   dailyMissions: state.dailyMissions.map((mission) =>
@@ -203,7 +358,7 @@ export const getHatchCost = (state: GameState) =>
 
 export const getUpgradeCost = (creature: Creature) =>
   Math.round(
-    42 *
+    UPGRADE_BASE_COST *
       Math.pow(creature.level, 1.42) *
       (1 + RARITY_ORDER.indexOf(creature.rarity) * 0.62) *
       (1 + creature.passiveTraits.length * 0.08),
@@ -389,7 +544,7 @@ export const breedCreatures = (
   firstId: string,
   secondId: string,
 ): HatchResult | null => {
-  if (firstId === secondId || state.coins < 95 || state.gems < 1) {
+  if (firstId === secondId || state.coins < BREED_COIN_COST || state.gems < BREED_GEM_COST) {
     return null;
   }
 
@@ -406,9 +561,10 @@ export const breedCreatures = (
   const nextState = progressMission(
     {
       ...state,
-      coins: state.coins - 95,
-      gems: state.gems - 1,
+      coins: state.coins - BREED_COIN_COST,
+      gems: state.gems - BREED_GEM_COST,
       hatchStreak: 0,
+      totalBreeds: state.totalBreeds + 1,
       discoveredCreatureNames: Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
       creatures: [creature, ...state.creatures],
       lastActiveAt: Date.now(),
@@ -498,9 +654,9 @@ export const claimDailyReward = (state: GameState, now = Date.now()): GameState 
   const streakBonus = Math.min(7, state.loginStreak);
   return {
     ...state,
-    coins: state.coins + 160 + streakBonus * 35,
-    gems: state.gems + 1,
-    eggs: state.eggs + 1,
+    coins: state.coins + DAILY_REWARD.coins + streakBonus * 25,
+    gems: state.gems + DAILY_REWARD.gems,
+    eggs: state.eggs + DAILY_REWARD.eggs,
     lastDailyRewardAt: now,
     lastActiveAt: now,
   };

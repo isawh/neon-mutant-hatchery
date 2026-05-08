@@ -918,6 +918,8 @@ p {
 
 .event-banner,
 .beginner-panel,
+.album-panel,
+.achievement-panel,
 .mission-panel,
 .limited-shop,
 .referral-panel,
@@ -957,6 +959,101 @@ p {
 
 .beginner-panel.ready {
   border-color: rgba(100, 255, 115, 0.5);
+}
+
+.album-panel,
+.achievement-panel {
+  border-color: rgba(100, 255, 115, 0.22);
+}
+
+.album-grid,
+.achievement-list {
+  display: grid;
+  gap: 8px;
+}
+
+.album-row,
+.full-album-row,
+.achievement-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(135, 246, 255, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(29, 247, 255, 0.08), rgba(255, 79, 216, 0.05)),
+    rgba(7, 13, 27, 0.86);
+}
+
+.album-row {
+  border-color: color-mix(in srgb, var(--rarity, var(--cyan)), transparent 58%);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--rarity, var(--cyan)), transparent 92%);
+}
+
+.album-row.ready,
+.full-album-row.ready,
+.achievement-row.ready {
+  border-color: rgba(100, 255, 115, 0.46);
+  box-shadow:
+    0 0 22px rgba(100, 255, 115, 0.12),
+    inset 0 0 18px rgba(100, 255, 115, 0.06);
+}
+
+.album-row-top,
+.album-row-bottom,
+.full-album-row,
+.achievement-reward,
+.achievement-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.album-row-top strong,
+.full-album-row strong,
+.achievement-copy strong {
+  color: #f7fbff;
+  font-size: 0.86rem;
+}
+
+.album-row-top span,
+.album-row-bottom span,
+.achievement-progress span,
+.achievement-reward span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.album-row-bottom .mini-button,
+.full-album-row .mini-button,
+.achievement-reward .mini-button {
+  flex: none;
+}
+
+.achievement-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.achievement-copy {
+  min-width: 0;
+}
+
+.achievement-copy p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achievement-progress .completion-bar {
+  flex: 1 1 auto;
 }
 
 .helper-tip {

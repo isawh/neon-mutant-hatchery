@@ -1,4 +1,5 @@
 import type {
+  Achievement,
   DailyMission,
   GameState,
   LimitedOfferId,
@@ -23,6 +24,7 @@ export const INITIAL_STATE: GameState = {
   creatures: [],
   hatchStreak: 0,
   totalHatches: 0,
+  totalBreeds: 0,
   discoveredCreatureNames: [],
   favoriteCreatureIds: [],
   referralCode: "",
@@ -48,6 +50,9 @@ export const INITIAL_STATE: GameState = {
   onboardingCompleted: false,
   starterRewardsClaimed: false,
   tutorialTasks: [],
+  achievements: [],
+  claimedAlbumRewards: [],
+  fullAlbumRewardClaimed: false,
   lastActiveAt: Date.now(),
 };
 
@@ -61,16 +66,35 @@ export const TABS: Array<{ id: TabId; label: string; icon: string }> = [
 
 export const RARITY_ORDER: Rarity[] = ["Common", "Rare", "Epic", "Legendary", "Mythic", "Secret"];
 
+export const RARITY_ALBUM_GOALS: Record<
+  Rarity,
+  { total: number; reward: { coins?: number; gems?: number; eggs?: number; premiumCapsules?: number; incomeBoostMinutes?: number; luckyBoostMinutes?: number } }
+> = {
+  Common: { total: 12, reward: { coins: 260, eggs: 2 } },
+  Rare: { total: 10, reward: { gems: 4, premiumCapsules: 1 } },
+  Epic: { total: 8, reward: { gems: 8, premiumCapsules: 2, luckyBoostMinutes: 30 } },
+  Legendary: { total: 5, reward: { gems: 16, premiumCapsules: 3, incomeBoostMinutes: 60 } },
+  Mythic: { total: 3, reward: { gems: 30, premiumCapsules: 5, luckyBoostMinutes: 60 } },
+  Secret: { total: 1, reward: { gems: 75, premiumCapsules: 10, incomeBoostMinutes: 120 } },
+};
+
+export const FULL_COLLECTION_REWARD = {
+  gems: 125,
+  premiumCapsules: 15,
+  incomeBoostMinutes: 240,
+  luckyBoostMinutes: 120,
+};
+
 export const RARITY_CONFIG: Record<
   Rarity,
   { chance: number; minIncome: number; maxIncome: number; className: string }
 > = {
-  Common: { chance: 61.95, minIncome: 2, maxIncome: 6, className: "rarity-common" },
-  Rare: { chance: 24, minIncome: 7, maxIncome: 14, className: "rarity-rare" },
-  Epic: { chance: 10, minIncome: 15, maxIncome: 28, className: "rarity-epic" },
-  Legendary: { chance: 3.5, minIncome: 32, maxIncome: 56, className: "rarity-legendary" },
-  Mythic: { chance: 0.5, minIncome: 70, maxIncome: 110, className: "rarity-mythic" },
-  Secret: { chance: 0.05, minIncome: 165, maxIncome: 240, className: "rarity-secret" },
+  Common: { chance: 61.95, minIncome: 7, maxIncome: 10, className: "rarity-common" },
+  Rare: { chance: 24, minIncome: 12, maxIncome: 18, className: "rarity-rare" },
+  Epic: { chance: 10, minIncome: 24, maxIncome: 36, className: "rarity-epic" },
+  Legendary: { chance: 3.5, minIncome: 46, maxIncome: 72, className: "rarity-legendary" },
+  Mythic: { chance: 0.5, minIncome: 92, maxIncome: 140, className: "rarity-mythic" },
+  Secret: { chance: 0.05, minIncome: 220, maxIncome: 320, className: "rarity-secret" },
 };
 
 export const TRAITS = [
@@ -166,12 +190,18 @@ export const PALETTE = [
 
 export const MAX_OFFLINE_MS = 12 * 60 * 60 * 1000;
 
-export const HATCH_BASE_COST = 18;
+export const HATCH_BASE_COST = 26;
+
+export const UPGRADE_BASE_COST = 82;
+
+export const BREED_COIN_COST = 320;
+
+export const BREED_GEM_COST = 1;
 
 export const FREE_CAPSULE_COOLDOWN_MS = 20 * 60 * 1000;
 
 export const DAILY_REWARD = {
-  coins: 180,
+  coins: 90,
   gems: 1,
   eggs: 1,
 };
@@ -222,6 +252,189 @@ export const TUTORIAL_TASKS: TutorialTask[] = [
     completed: false,
     claimed: false,
     reward: { gems: 1, coins: 50 },
+  },
+];
+
+export const ACHIEVEMENTS: Achievement[] = [
+  {
+    id: "hatch_10",
+    title: "Capsule Opener I",
+    description: "Hatch 10 capsules.",
+    progress: 0,
+    target: 10,
+    claimed: false,
+    reward: { coins: 250, eggs: 1 },
+  },
+  {
+    id: "hatch_50",
+    title: "Capsule Opener II",
+    description: "Hatch 50 capsules.",
+    progress: 0,
+    target: 50,
+    claimed: false,
+    reward: { gems: 8, premiumCapsules: 2 },
+  },
+  {
+    id: "hatch_100",
+    title: "Capsule Opener III",
+    description: "Hatch 100 capsules.",
+    progress: 0,
+    target: 100,
+    claimed: false,
+    reward: { gems: 18, premiumCapsules: 4, luckyBoostMinutes: 60 },
+  },
+  {
+    id: "own_5",
+    title: "Small Colony",
+    description: "Own 5 creatures.",
+    progress: 0,
+    target: 5,
+    claimed: false,
+    reward: { coins: 400 },
+  },
+  {
+    id: "own_20",
+    title: "Growing Lab",
+    description: "Own 20 creatures.",
+    progress: 0,
+    target: 20,
+    claimed: false,
+    reward: { gems: 10, eggs: 3 },
+  },
+  {
+    id: "own_50",
+    title: "Mutant Reserve",
+    description: "Own 50 creatures.",
+    progress: 0,
+    target: 50,
+    claimed: false,
+    reward: { gems: 25, premiumCapsules: 5 },
+  },
+  {
+    id: "first_rare",
+    title: "Rare Signal",
+    description: "Get your first Rare creature.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { coins: 250, gems: 2 },
+  },
+  {
+    id: "first_epic",
+    title: "Epic Breakthrough",
+    description: "Get your first Epic creature.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { gems: 6, premiumCapsules: 1 },
+  },
+  {
+    id: "first_legendary",
+    title: "Legendary Genome",
+    description: "Get your first Legendary creature.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { gems: 14, premiumCapsules: 2, incomeBoostMinutes: 60 },
+  },
+  {
+    id: "first_mythic",
+    title: "Mythic Pulse",
+    description: "Get your first Mythic creature.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { gems: 30, premiumCapsules: 4, luckyBoostMinutes: 60 },
+  },
+  {
+    id: "first_secret",
+    title: "Secret Specimen",
+    description: "Get your first Secret creature.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { gems: 90, premiumCapsules: 10, incomeBoostMinutes: 180 },
+  },
+  {
+    id: "level_5",
+    title: "Level 5 Mutant",
+    description: "Upgrade any creature to level 5.",
+    progress: 0,
+    target: 5,
+    claimed: false,
+    reward: { coins: 900, gems: 3 },
+  },
+  {
+    id: "level_10",
+    title: "Level 10 Mutant",
+    description: "Upgrade any creature to level 10.",
+    progress: 0,
+    target: 10,
+    claimed: false,
+    reward: { gems: 12, premiumCapsules: 2, incomeBoostMinutes: 60 },
+  },
+  {
+    id: "level_25",
+    title: "Apex Mutant",
+    description: "Upgrade any creature to level 25.",
+    progress: 0,
+    target: 25,
+    claimed: false,
+    reward: { gems: 45, premiumCapsules: 8, incomeBoostMinutes: 180 },
+  },
+  {
+    id: "breed_1",
+    title: "First Fusion",
+    description: "Breed creatures once.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { coins: 500, gems: 2 },
+  },
+  {
+    id: "breed_5",
+    title: "Fusion Routine",
+    description: "Breed creatures 5 times.",
+    progress: 0,
+    target: 5,
+    claimed: false,
+    reward: { gems: 10, premiumCapsules: 2 },
+  },
+  {
+    id: "breed_20",
+    title: "Gene Architect",
+    description: "Breed creatures 20 times.",
+    progress: 0,
+    target: 20,
+    claimed: false,
+    reward: { gems: 35, premiumCapsules: 6, luckyBoostMinutes: 90 },
+  },
+  {
+    id: "invite_1",
+    title: "First Invite",
+    description: "Invite 1 friend.",
+    progress: 0,
+    target: 1,
+    claimed: false,
+    reward: { gems: 3 },
+  },
+  {
+    id: "invite_3",
+    title: "Lab Circle",
+    description: "Invite 3 friends.",
+    progress: 0,
+    target: 3,
+    claimed: false,
+    reward: { gems: 8, premiumCapsules: 1 },
+  },
+  {
+    id: "invite_10",
+    title: "Viral Hatchery",
+    description: "Invite 10 friends.",
+    progress: 0,
+    target: 10,
+    claimed: false,
+    reward: { gems: 25, premiumCapsules: 4, luckyBoostMinutes: 60 },
   },
 ];
 
