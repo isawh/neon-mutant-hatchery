@@ -1,5 +1,15 @@
-import { DAILY_MISSION_POOL, INITIAL_STATE, PASSIVE_TRAIT_CONFIG, RARITY_ORDER, STORAGE_KEY } from "./constants";
-import type { ActiveRareEvent, Creature, DailyMission, GameState, LimitedOfferId, MissionId, PassiveTrait } from "./types";
+import { DAILY_MISSION_POOL, INITIAL_STATE, PASSIVE_TRAIT_CONFIG, RARITY_ORDER, STORAGE_KEY, TUTORIAL_TASKS } from "./constants";
+import type {
+  ActiveRareEvent,
+  Creature,
+  DailyMission,
+  GameState,
+  LimitedOfferId,
+  MissionId,
+  PassiveTrait,
+  TutorialTask,
+  TutorialTaskId,
+} from "./types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -12,6 +22,9 @@ const isMissionId = (value: unknown): value is MissionId =>
 
 const isLimitedOfferId = (value: unknown): value is LimitedOfferId =>
   value === "premium_capsule" || value === "double_income" || value === "lucky_hatch";
+
+const isTutorialTaskId = (value: unknown): value is TutorialTaskId =>
+  typeof value === "string" && TUTORIAL_TASKS.some((task) => task.id === value);
 
 const getTraitMultiplier = (creature: Creature) =>
   creature.passiveTraits.reduce(
@@ -80,6 +93,28 @@ const normalizeMission = (value: unknown): DailyMission | null => {
   };
 };
 
+const normalizeTutorialTasks = (value: unknown): TutorialTask[] => {
+  const parsedTasks = Array.isArray(value) ? value : [];
+  const taskMap = new Map<TutorialTaskId, TutorialTask>();
+
+  parsedTasks.forEach((item) => {
+    if (!isRecord(item) || !isTutorialTaskId(item.id)) {
+      return;
+    }
+    const base = TUTORIAL_TASKS.find((task) => task.id === item.id);
+    if (!base) {
+      return;
+    }
+    taskMap.set(item.id, {
+      ...base,
+      completed: typeof item.completed === "boolean" ? item.completed : false,
+      claimed: typeof item.claimed === "boolean" ? item.claimed : false,
+    });
+  });
+
+  return TUTORIAL_TASKS.map((task) => taskMap.get(task.id) ?? { ...task });
+};
+
 const normalizeActiveEvent = (value: unknown): ActiveRareEvent | null => {
   if (!isRecord(value)) {
     return null;
@@ -117,6 +152,11 @@ export const loadGameState = (): GameState => {
     const discoveredCreatureNames = Array.isArray(parsed.discoveredCreatureNames)
       ? parsed.discoveredCreatureNames.filter((name) => typeof name === "string")
       : creatures.map((creature) => creature.name);
+    const hasLegacyProgress =
+      creatures.length > 0 ||
+      (typeof parsed.totalHatches === "number" && parsed.totalHatches > 0) ||
+      (typeof parsed.lastDailyRewardAt === "number" && parsed.lastDailyRewardAt > 0) ||
+      (typeof parsed.inviteCount === "number" && parsed.inviteCount > 0);
 
     return {
       coins: typeof parsed.coins === "number" ? parsed.coins : INITIAL_STATE.coins,
@@ -177,6 +217,11 @@ export const loadGameState = (): GameState => {
         typeof parsed.freeCapsuleReadyAt === "number"
           ? parsed.freeCapsuleReadyAt
           : INITIAL_STATE.freeCapsuleReadyAt,
+      onboardingCompleted:
+        typeof parsed.onboardingCompleted === "boolean" ? parsed.onboardingCompleted : hasLegacyProgress,
+      starterRewardsClaimed:
+        typeof parsed.starterRewardsClaimed === "boolean" ? parsed.starterRewardsClaimed : hasLegacyProgress,
+      tutorialTasks: normalizeTutorialTasks(parsed.tutorialTasks),
       lastActiveAt:
         typeof parsed.lastActiveAt === "number" ? parsed.lastActiveAt : INITIAL_STATE.lastActiveAt,
     };

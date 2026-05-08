@@ -6,6 +6,8 @@ export type TabId = "hatch" | "collection" | "breed" | "shop" | "profile";
 
 export type MissionId = "hatch_3" | "upgrade_1" | "breed_1" | "collect_250";
 
+export type TutorialTaskId = "first_hatch" | "open_collection" | "upgrade_creature" | "claim_daily" | "open_shop";
+
 export type RareEventId = "glitched_capsule" | "radiant_surge" | "mutation_storm";
 
 export type LimitedOfferId = "premium_capsule" | "double_income" | "lucky_hatch";
@@ -15,6 +17,20 @@ export type DailyMission = {
   title: string;
   progress: number;
   target: number;
+  claimed: boolean;
+  reward: {
+    coins?: number;
+    gems?: number;
+    eggs?: number;
+    premiumCapsules?: number;
+  };
+};
+
+export type TutorialTask = {
+  id: TutorialTaskId;
+  title: string;
+  body: string;
+  completed: boolean;
   claimed: boolean;
   reward: {
     coins?: number;
@@ -81,6 +97,9 @@ export type GameState = {
   loginStreak: number;
   lastLoginDate: string;
   freeCapsuleReadyAt: number;
+  onboardingCompleted: boolean;
+  starterRewardsClaimed: boolean;
+  tutorialTasks: TutorialTask[];
   lastActiveAt: number;
 };
 

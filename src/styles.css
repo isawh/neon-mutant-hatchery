@@ -917,6 +917,7 @@ p {
 }
 
 .event-banner,
+.beginner-panel,
 .mission-panel,
 .limited-shop,
 .referral-panel,
@@ -934,6 +935,51 @@ p {
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.2),
     inset 0 0 24px rgba(29, 247, 255, 0.04);
+}
+
+.beginner-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin: 0 12px;
+  border-color: rgba(100, 255, 115, 0.24);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(100, 255, 115, 0.14), transparent 42%),
+    linear-gradient(145deg, rgba(29, 247, 255, 0.08), rgba(12, 20, 40, 0.96)),
+    rgba(12, 20, 40, 0.96);
+}
+
+.beginner-panel h3,
+.beginner-panel p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.beginner-panel.ready {
+  border-color: rgba(100, 255, 115, 0.5);
+}
+
+.helper-tip {
+  padding: 9px 10px;
+  border: 1px solid rgba(100, 255, 115, 0.24);
+  border-radius: 8px;
+  color: #caffd0;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.25;
+  background:
+    linear-gradient(135deg, rgba(100, 255, 115, 0.12), rgba(29, 247, 255, 0.07)),
+    rgba(5, 7, 19, 0.26);
+}
+
+.tutorial-glow {
+  position: relative;
+  border-color: rgba(100, 255, 115, 0.62) !important;
+  box-shadow:
+    0 0 24px rgba(100, 255, 115, 0.22),
+    0 0 44px rgba(29, 247, 255, 0.08),
+    inset 0 0 18px rgba(100, 255, 115, 0.08) !important;
+  animation: tutorialGlow 1.9s ease-in-out infinite;
 }
 
 .event-banner {
@@ -2260,6 +2306,78 @@ p {
   width: 100%;
 }
 
+.onboarding-backdrop {
+  z-index: 70;
+}
+
+.onboarding-modal {
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 22px 18px 18px;
+  border: 1px solid rgba(29, 247, 255, 0.34);
+  border-radius: 14px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(29, 247, 255, 0.2), transparent 44%),
+    linear-gradient(160deg, rgba(100, 255, 115, 0.12), rgba(255, 79, 216, 0.08)),
+    rgba(10, 17, 35, 0.98);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.5),
+    0 0 50px rgba(29, 247, 255, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: modalPop 320ms cubic-bezier(0.2, 1.1, 0.24, 1) both;
+}
+
+.onboarding-orb {
+  position: relative;
+  width: 104px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247, 251, 255, 0.14);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.8), transparent 17%),
+    linear-gradient(135deg, var(--cyan), var(--pink) 52%, var(--green));
+  box-shadow:
+    0 0 34px rgba(29, 247, 255, 0.38),
+    inset 0 -18px 24px rgba(5, 7, 19, 0.24);
+  animation: rewardOrb 1.8s ease-in-out infinite;
+}
+
+.onboarding-orb span {
+  width: 58%;
+  aspect-ratio: 0.78;
+  border-radius: 54% 46% 48% 52% / 62% 58% 42% 38%;
+  background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(5, 7, 19, 0.28) 10px 14px);
+}
+
+.onboarding-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.onboarding-dots i {
+  width: 7px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(148, 165, 190, 0.38);
+}
+
+.onboarding-dots i.active {
+  background: var(--green);
+  box-shadow: 0 0 14px rgba(100, 255, 115, 0.5);
+}
+
+.onboarding-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 9px;
+}
+
 .reward-orb {
   width: 96px;
   aspect-ratio: 1;
@@ -2966,6 +3084,17 @@ p {
   100% {
     transform: translateY(-10px) scale(0.98);
     opacity: 0;
+  }
+}
+
+@keyframes tutorialGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.16);
   }
 }
 

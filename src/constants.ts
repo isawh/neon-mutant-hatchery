@@ -6,14 +6,15 @@ import type {
   PassiveTrait,
   Rarity,
   TabId,
+  TutorialTask,
 } from "./types";
 
 export const STORAGE_KEY = "neon-mutant-hatchery:v1";
 
 export const INITIAL_STATE: GameState = {
-  coins: 120,
-  gems: 8,
-  eggs: 3,
+  coins: 0,
+  gems: 0,
+  eggs: 0,
   premiumCapsules: 0,
   creatures: [],
   hatchStreak: 0,
@@ -40,6 +41,9 @@ export const INITIAL_STATE: GameState = {
   loginStreak: 1,
   lastLoginDate: "",
   freeCapsuleReadyAt: Date.now() + 10 * 60 * 1000,
+  onboardingCompleted: false,
+  starterRewardsClaimed: false,
+  tutorialTasks: [],
   lastActiveAt: Date.now(),
 };
 
@@ -167,6 +171,55 @@ export const DAILY_REWARD = {
   gems: 1,
   eggs: 1,
 };
+
+export const STARTER_REWARD = {
+  eggs: 3,
+  coins: 100,
+  gems: 5,
+};
+
+export const TUTORIAL_TASKS: TutorialTask[] = [
+  {
+    id: "first_hatch",
+    title: "Hatch your first capsule",
+    body: "Open a capsule and reveal your first mutant.",
+    completed: false,
+    claimed: false,
+    reward: { coins: 35 },
+  },
+  {
+    id: "open_collection",
+    title: "Open Collection",
+    body: "See every mutant you have discovered.",
+    completed: false,
+    claimed: false,
+    reward: { gems: 1 },
+  },
+  {
+    id: "upgrade_creature",
+    title: "Upgrade a creature",
+    body: "Spend coins to increase idle income.",
+    completed: false,
+    claimed: false,
+    reward: { coins: 75 },
+  },
+  {
+    id: "claim_daily",
+    title: "Claim daily reward",
+    body: "Start your return streak and get supplies.",
+    completed: false,
+    claimed: false,
+    reward: { eggs: 1 },
+  },
+  {
+    id: "open_shop",
+    title: "Open Shop",
+    body: "Preview Stars products and free-to-play offers.",
+    completed: false,
+    claimed: false,
+    reward: { gems: 1, coins: 50 },
+  },
+];
 
 export const INVITE_MILESTONES = [
   { invites: 1, reward: { gems: 2, premiumCapsules: 1 }, label: "2 gems + premium capsule" },

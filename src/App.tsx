@@ -13,6 +13,7 @@ import {
 } from "./constants";
 import {
   applyLoginStreak,
+  applyStarterRewards,
   breedCreatures,
   buyLimitedOffer,
   calculateOfflineIncome,
@@ -20,7 +21,10 @@ import {
   claimDailyReward,
   claimFreeCapsule,
   claimMissionReward,
+  claimTutorialReward,
   collectTickIncome,
+  completeTutorialTask,
+  ensureTutorialState,
   ensureLiveOpsState,
   getBoostedIncomePerMinute,
   getCreatureIncomePerMinute,
@@ -31,6 +35,7 @@ import {
   getUpgradeCost,
   hatchEgg,
   recordInviteShare,
+  resetOnboardingProgress,
   toggleFavoriteCreature,
   upgradeCreature,
 } from "./game";
@@ -53,7 +58,7 @@ import {
   registerIncomingReferral,
   syncReferralStats,
 } from "./services/referralService";
-import type { Creature, GameState, LimitedOfferId, MissionId, Rarity, TabId } from "./types";
+import type { Creature, GameState, LimitedOfferId, MissionId, Rarity, TabId, TutorialTaskId } from "./types";
 import "./styles.css";
 
 const formatNumber = (value: number) => Math.floor(value).toLocaleString("en-US");
@@ -67,6 +72,39 @@ const formatDuration = (ms: number) => {
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
+
+const formatReward = (reward: GameState["tutorialTasks"][number]["reward"]) =>
+  [
+    reward.coins ? `${formatNumber(reward.coins)} coins` : "",
+    reward.gems ? `${formatNumber(reward.gems)} gems` : "",
+    reward.eggs ? `${formatNumber(reward.eggs)} capsules` : "",
+    reward.premiumCapsules ? `${formatNumber(reward.premiumCapsules)} premium` : "",
+  ]
+    .filter(Boolean)
+    .join(" + ");
+
+const ONBOARDING_STEPS = [
+  {
+    title: "Welcome to Neon Hatch",
+    body: "You are running a compact mutant capsule lab inside Telegram.",
+  },
+  {
+    title: "Hatch capsules to discover mutants",
+    body: "Every hatch creates a procedural creature with rarity, traits, colors, and income.",
+  },
+  {
+    title: "Mutants generate coins over time",
+    body: "Coins keep building while you play and after you leave.",
+  },
+  {
+    title: "Upgrade and breed stronger mutants",
+    body: "Level up your best pulls, then combine parents to chase better generations.",
+  },
+  {
+    title: "Invite friends to earn rewards",
+    body: "Share your Telegram invite code for gems, capsules, colors, and rare boosts.",
+  },
+];
 
 const rarityRank = (rarity: Rarity) => RARITY_ORDER.indexOf(rarity);
 
@@ -124,11 +162,13 @@ const playSecretSoundPlaceholder = (creature: Creature) => {
 const loadPlayableState = () => {
   try {
     return {
-      state: ensureReferralCode(ensureLiveOpsState(applyLoginStreak(calculateOfflineIncome(loadGameState()).state))),
+      state: applyStarterRewards(
+        ensureReferralCode(ensureLiveOpsState(applyLoginStreak(calculateOfflineIncome(loadGameState()).state))),
+      ),
       error: false,
     };
   } catch {
-    return { state: { ...INITIAL_STATE, lastActiveAt: Date.now() }, error: true };
+    return { state: applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() }), error: true };
   }
 };
 
@@ -231,6 +271,7 @@ function CreatureCard({
   canUpgrade,
   isFavorite,
   upgrading,
+  highlightUpgrade,
 }: {
   creature: Creature;
   selected?: boolean;
@@ -241,6 +282,7 @@ function CreatureCard({
   canUpgrade?: boolean;
   isFavorite?: boolean;
   upgrading?: boolean;
+  highlightUpgrade?: boolean;
 }) {
   const income = getCreatureIncomePerMinute(creature);
 
@@ -303,7 +345,7 @@ function CreatureCard({
       </div>
       {onUpgrade ? (
         <button
-          className="mini-button"
+          className={`mini-button ${highlightUpgrade ? "tutorial-glow" : ""}`}
           disabled={!canUpgrade}
           onClick={(event) => {
             event.stopPropagation();
@@ -349,6 +391,7 @@ export default function App() {
   const [revealRarity, setRevealRarity] = useState<Rarity | null>(null);
   const [screenFlash, setScreenFlash] = useState<Rarity | null>(null);
   const [recentRareHatch, setRecentRareHatch] = useState<Creature | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
@@ -368,6 +411,8 @@ export default function App() {
   const hatchCost = useMemo(() => getHatchCost(state), [state]);
   const canClaimDaily = useMemo(() => canClaimDailyReward(state, now), [state, now]);
   const freeCapsuleRemaining = Math.max(0, state.freeCapsuleReadyAt - now);
+  const currentTutorialTask = state.tutorialTasks.find((task) => !task.claimed) ?? null;
+  const tutorialTaskReady = Boolean(currentTutorialTask?.completed && !currentTutorialTask.claimed);
   const referralLink = useMemo(() => {
     return buildReferralLink(state.referralCode);
   }, [state.referralCode]);
@@ -425,9 +470,11 @@ export default function App() {
       const url = new URL(window.location.href);
       const incomingReferral =
         url.searchParams.get("ref") ?? url.searchParams.get("startapp") ?? getTelegramStartParam();
-      const loginState = ensureReferralCode(
-        ensureLiveOpsState(
-          syncReferralStats(registerIncomingReferral(applyLoginStreak(loaded.state), incomingReferral ?? "")),
+      const loginState = applyStarterRewards(
+        ensureReferralCode(
+          ensureLiveOpsState(
+            syncReferralStats(registerIncomingReferral(applyLoginStreak(loaded.state), incomingReferral ?? "")),
+          ),
         ),
       );
       setState(loginState);
@@ -441,7 +488,7 @@ export default function App() {
       }
       setStateLoadError(false);
     } catch {
-      setState({ ...INITIAL_STATE, lastActiveAt: Date.now() });
+      setState(applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() }));
       setOfflineEarned(0);
       setShowOfflineModal(false);
       setStateLoadError(true);
@@ -484,6 +531,41 @@ export default function App() {
     success();
   };
 
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === "collection") {
+      setState((current) => completeTutorialTask(current, "open_collection"));
+    }
+    if (tab === "shop") {
+      setState((current) => completeTutorialTask(current, "open_shop"));
+    }
+    haptic.selection();
+  };
+
+  const handleTutorialClaim = (taskId: TutorialTaskId) => {
+    spendOrWarn(claimTutorialReward(state, taskId), () => {
+      notify("Beginner quest reward claimed", "good");
+      haptic.success();
+    });
+  };
+
+  const handleTutorialFocus = (taskId: TutorialTaskId) => {
+    if (taskId === "open_collection") {
+      handleTabChange("collection");
+      return;
+    }
+    if (taskId === "open_shop") {
+      handleTabChange("shop");
+      return;
+    }
+    if (taskId === "upgrade_creature") {
+      handleTabChange("collection");
+      return;
+    }
+    setActiveTab("hatch");
+    haptic.selection();
+  };
+
   const handleHatch = () => {
     if (isHatching) {
       return;
@@ -496,7 +578,7 @@ export default function App() {
     }
 
     track("hatch_started", { premium: state.premiumCapsules > 0 });
-    setState(result.state);
+    setState(completeTutorialTask(result.state, "first_hatch"));
     setLastHatched(null);
     setRevealRarity(result.creature.rarity);
     setScreenFlash(null);
@@ -561,7 +643,8 @@ export default function App() {
   };
 
   const handleUpgrade = (creatureId: string) => {
-    spendOrWarn(upgradeCreature(state, creatureId), () => {
+    const next = upgradeCreature(state, creatureId);
+    spendOrWarn(next ? completeTutorialTask(next, "upgrade_creature") : null, () => {
       setUpgradingCreatureId(creatureId);
       window.setTimeout(() => setUpgradingCreatureId(null), 780);
       track("creature_upgraded", { creatureId });
@@ -570,7 +653,8 @@ export default function App() {
   };
 
   const handleDailyReward = () => {
-    spendOrWarn(claimDailyReward(state, now), () => {
+    const next = claimDailyReward(state, now);
+    spendOrWarn(next ? completeTutorialTask(next, "claim_daily") : null, () => {
       notify("Daily reward claimed", "good");
       track("daily_reward_claimed");
       haptic.success();
@@ -699,7 +783,8 @@ export default function App() {
             className="icon-button"
             aria-label="Reset game"
             onClick={() => {
-              setState(resetGameState());
+              setState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState()))));
+              setOnboardingStep(0);
               setLastHatched(null);
               setRevealRarity(null);
               setScreenFlash(null);
@@ -727,7 +812,13 @@ export default function App() {
         ) : null}
 
         <section className="retention-strip" aria-label="Daily rewards">
-          <button className="reward-chip" disabled={!canClaimDaily} onClick={handleDailyReward}>
+          <button
+            className={`reward-chip ${
+              currentTutorialTask?.id === "claim_daily" && !currentTutorialTask.completed ? "tutorial-glow" : ""
+            }`}
+            disabled={!canClaimDaily}
+            onClick={handleDailyReward}
+          >
             <span>Daily</span>
             <strong>{canClaimDaily ? "Claim" : `Streak ${state.loginStreak}`}</strong>
           </button>
@@ -740,6 +831,13 @@ export default function App() {
             <strong>{state.hatchStreak}x</strong>
           </div>
         </section>
+
+        <TutorialPanel
+          task={currentTutorialTask}
+          ready={tutorialTaskReady}
+          onClaim={handleTutorialClaim}
+          onFocus={handleTutorialFocus}
+        />
 
       <div className="floating-coin-layer" aria-hidden="true">
         {floatingCoins.map((item) => (
@@ -821,6 +919,11 @@ export default function App() {
                         : "Crack open a capsule to generate a procedural mutant."}
                     </p>
                   </div>
+                  {state.totalHatches === 0 ? (
+                    <div className="helper-tip">
+                      Your starter kit is loaded. Hatch once to unlock your first idle coin generator.
+                    </div>
+                  ) : null}
                   <div className="hatch-meta-grid">
                     <StatPill label="Open cost" value={`${formatNumber(hatchCost)} coins`} />
                     <StatPill
@@ -840,7 +943,9 @@ export default function App() {
                     ))}
                   </div>
                   <button
-                    className="primary-button"
+                    className={`primary-button ${
+                      currentTutorialTask?.id === "first_hatch" && !currentTutorialTask.completed ? "tutorial-glow" : ""
+                    }`}
                     disabled={
                       (state.premiumCapsules <= 0 && (state.eggs <= 0 || state.coins < hatchCost)) || isHatching
                     }
@@ -922,6 +1027,11 @@ export default function App() {
                       isFavorite={state.favoriteCreatureIds.includes(creature.id)}
                       upgrading={upgradingCreatureId === creature.id}
                       canUpgrade={state.coins >= getUpgradeCost(creature)}
+                      highlightUpgrade={
+                        currentTutorialTask?.id === "upgrade_creature" &&
+                        !currentTutorialTask.completed &&
+                        state.coins >= getUpgradeCost(creature)
+                      }
                       onClick={() => setDetailCreatureId(creature.id)}
                       onFavorite={() => handleFavorite(creature.id)}
                       onUpgrade={() => handleUpgrade(creature.id)}
@@ -1205,7 +1315,8 @@ export default function App() {
               <button
                 className="mini-button"
                 onClick={() => {
-                  setState(ensureReferralCode(resetGameState()));
+                  setState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState()))));
+                  setOnboardingStep(0);
                   setLastHatched(null);
                   setRevealRarity(null);
                   setScreenFlash(null);
@@ -1218,12 +1329,50 @@ export default function App() {
               >
                 Reset local save
               </button>
+              <button
+                className="mini-button"
+                onClick={() => {
+                  setState((current) => resetOnboardingProgress(ensureTutorialState(current)));
+                  setOnboardingStep(0);
+                  notify("Onboarding reset", "event");
+                  haptic.impact("medium");
+                }}
+              >
+                Reset onboarding
+              </button>
             </div>
           </div>
         ) : null}
       </section>
 
-      {showOfflineModal ? (
+      {!state.onboardingCompleted ? (
+        <OnboardingModal
+          step={onboardingStep}
+          onNext={() => {
+            if (onboardingStep < ONBOARDING_STEPS.length - 1) {
+              setOnboardingStep((step) => step + 1);
+              haptic.selection();
+              return;
+            }
+            setState((current) => ({
+              ...applyStarterRewards(ensureTutorialState(current)),
+              onboardingCompleted: true,
+              lastActiveAt: Date.now(),
+            }));
+            notify(
+              state.starterRewardsClaimed ? "Onboarding completed" : "Starter kit loaded: 3 capsules, 100 coins, 5 gems",
+              "good",
+            );
+            haptic.success();
+          }}
+          onBack={() => {
+            setOnboardingStep((step) => Math.max(0, step - 1));
+            haptic.selection();
+          }}
+        />
+      ) : null}
+
+      {showOfflineModal && state.onboardingCompleted ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="offline-title">
           <div className="reward-modal">
             <div className="reward-orb" />
@@ -1285,7 +1434,13 @@ export default function App() {
               </div>
             </div>
             <button
-              className="primary-button"
+              className={`primary-button ${
+                currentTutorialTask?.id === "upgrade_creature" &&
+                !currentTutorialTask.completed &&
+                state.coins >= getUpgradeCost(detailCreature)
+                  ? "tutorial-glow"
+                  : ""
+              }`}
               disabled={state.coins < getUpgradeCost(detailCreature)}
               onClick={() => handleUpgrade(detailCreature.id)}
             >
@@ -1327,11 +1482,13 @@ export default function App() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            className={activeTab === tab.id ? "active" : ""}
-            onClick={() => {
-              setActiveTab(tab.id);
-              haptic.selection();
-            }}
+            className={`${activeTab === tab.id ? "active" : ""} ${
+              (currentTutorialTask?.id === "open_collection" && tab.id === "collection" && !currentTutorialTask.completed) ||
+              (currentTutorialTask?.id === "open_shop" && tab.id === "shop" && !currentTutorialTask.completed)
+                ? "tutorial-glow"
+                : ""
+            }`}
+            onClick={() => handleTabChange(tab.id)}
           >
             <span className={`nav-icon nav-${tab.icon}`} />
             {tab.label}
@@ -1340,6 +1497,89 @@ export default function App() {
       </nav>
       </div>
     </main>
+  );
+}
+
+function TutorialPanel({
+  task,
+  ready,
+  onClaim,
+  onFocus,
+}: {
+  task: GameState["tutorialTasks"][number] | null;
+  ready: boolean;
+  onClaim: (taskId: TutorialTaskId) => void;
+  onFocus: (taskId: TutorialTaskId) => void;
+}) {
+  if (!task) {
+    return null;
+  }
+
+  const reward = formatReward(task.reward);
+
+  return (
+    <section className={`beginner-panel ${ready ? "ready tutorial-glow" : ""}`} aria-label="Beginner quest">
+      <div>
+        <p className="eyebrow">Beginner quest</p>
+        <h3>{task.title}</h3>
+        <p>{task.completed ? `Reward ready: ${reward}` : task.body}</p>
+      </div>
+      <button
+        className="mini-button"
+        onClick={() => {
+          if (ready) {
+            onClaim(task.id);
+            return;
+          }
+          onFocus(task.id);
+        }}
+      >
+        {ready ? "Claim" : "Go"}
+      </button>
+    </section>
+  );
+}
+
+function OnboardingModal({
+  step,
+  onNext,
+  onBack,
+}: {
+  step: number;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const content = ONBOARDING_STEPS[step];
+  const isLast = step === ONBOARDING_STEPS.length - 1;
+
+  return (
+    <div className="modal-backdrop onboarding-backdrop" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+      <div className="onboarding-modal">
+        <div className="onboarding-orb">
+          <span />
+        </div>
+        <div className="modal-heading">
+          <p className="eyebrow">New researcher briefing</p>
+          <h2 id="onboarding-title">{content.title}</h2>
+          <span>{step + 1}/{ONBOARDING_STEPS.length}</span>
+        </div>
+        <p>{content.body}</p>
+        <div className="onboarding-dots" aria-hidden="true">
+          {ONBOARDING_STEPS.map((_, index) => (
+            <i key={index} className={index === step ? "active" : ""} />
+          ))}
+        </div>
+        <div className="onboarding-actions">
+          <button className="mini-button" disabled={step === 0} onClick={onBack}>
+            Back
+          </button>
+          <button className="primary-button" onClick={onNext}>
+            {isLast ? "Start hatching" : "Next"}
+          </button>
+        </div>
+        <p className="fine-print">Starter kit: 3 capsules, 100 coins, 5 gems.</p>
+      </div>
+    </div>
   );
 }
 

@@ -12,7 +12,9 @@ import {
   RARE_EVENTS,
   RARITY_CONFIG,
   RARITY_ORDER,
+  STARTER_REWARD,
   TRAITS,
+  TUTORIAL_TASKS,
 } from "./constants";
 import type {
   ActiveRareEvent,
@@ -24,6 +26,7 @@ import type {
   MissionId,
   PassiveTrait,
   Rarity,
+  TutorialTaskId,
 } from "./types";
 
 const randomInt = (min: number, max: number) =>
@@ -44,6 +47,79 @@ const getMissionRotation = (now = Date.now()): DailyMission[] => {
     return { ...mission, progress: 0, claimed: false };
   });
 };
+
+export const ensureTutorialState = (state: GameState): GameState => {
+  const existingTasks = new Map(state.tutorialTasks.map((task) => [task.id, task]));
+  return {
+    ...state,
+    tutorialTasks: TUTORIAL_TASKS.map((task) => {
+      const existing = existingTasks.get(task.id);
+      return {
+        ...task,
+        completed: existing?.completed ?? task.completed,
+        claimed: existing?.claimed ?? task.claimed,
+      };
+    }),
+  };
+};
+
+export const applyStarterRewards = (state: GameState): GameState => {
+  const tutorialState = ensureTutorialState(state);
+  if (tutorialState.starterRewardsClaimed) {
+    return tutorialState;
+  }
+
+  return {
+    ...tutorialState,
+    coins: tutorialState.coins + STARTER_REWARD.coins,
+    gems: tutorialState.gems + STARTER_REWARD.gems,
+    eggs: tutorialState.eggs + STARTER_REWARD.eggs,
+    starterRewardsClaimed: true,
+    lastActiveAt: Date.now(),
+  };
+};
+
+export const completeTutorialTask = (state: GameState, taskId: TutorialTaskId): GameState => {
+  const tutorialState = ensureTutorialState(state);
+  if (tutorialState.tutorialTasks.find((task) => task.id === taskId)?.completed) {
+    return tutorialState;
+  }
+
+  return {
+    ...tutorialState,
+    tutorialTasks: tutorialState.tutorialTasks.map((task) =>
+      task.id === taskId ? { ...task, completed: true } : task,
+    ),
+    lastActiveAt: Date.now(),
+  };
+};
+
+export const claimTutorialReward = (state: GameState, taskId: TutorialTaskId): GameState | null => {
+  const tutorialState = ensureTutorialState(state);
+  const task = tutorialState.tutorialTasks.find((item) => item.id === taskId);
+  if (!task || !task.completed || task.claimed) {
+    return null;
+  }
+
+  return {
+    ...tutorialState,
+    coins: tutorialState.coins + (task.reward.coins ?? 0),
+    gems: tutorialState.gems + (task.reward.gems ?? 0),
+    eggs: tutorialState.eggs + (task.reward.eggs ?? 0),
+    premiumCapsules: tutorialState.premiumCapsules + (task.reward.premiumCapsules ?? 0),
+    tutorialTasks: tutorialState.tutorialTasks.map((item) =>
+      item.id === taskId ? { ...item, claimed: true } : item,
+    ),
+    lastActiveAt: Date.now(),
+  };
+};
+
+export const resetOnboardingProgress = (state: GameState): GameState => ({
+  ...state,
+  onboardingCompleted: false,
+  tutorialTasks: TUTORIAL_TASKS.map((task) => ({ ...task })),
+  lastActiveAt: Date.now(),
+});
 
 const progressMission = (state: GameState, missionId: MissionId, amount = 1): GameState => ({
   ...state,
