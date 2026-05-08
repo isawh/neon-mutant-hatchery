@@ -5,11 +5,58 @@ type ApiAuthResponse = {
   playerId: string;
   telegramUser: unknown;
   isNewPlayer: boolean;
+  player?: {
+    id: string;
+    referralCode: string;
+    referredBy: string | null;
+  };
 };
 
 type CloudSaveResponse = {
   gameState: GameState | null;
   updatedAt: string | null;
+};
+
+export type ReferralReward = {
+  gems?: number;
+  eggs?: number;
+  premiumCapsules?: number;
+  rareChanceBonus?: number;
+  exclusiveColor?: string;
+};
+
+export type BackendReferralMilestone = {
+  invites: number;
+  label: string;
+  reward: ReferralReward;
+  claimed: boolean;
+  claimable: boolean;
+};
+
+export type BackendReferralStats = {
+  playerId: string;
+  referralCode: string;
+  referredBy: string | null;
+  inviteCount: number;
+  claimedMilestones: number[];
+  milestones: BackendReferralMilestone[];
+};
+
+export type ReferralRegisterResponse = {
+  ok: boolean;
+  registered: boolean;
+  rewardPending: boolean;
+  reason?: string;
+  invitedReward?: ReferralReward;
+};
+
+export type ReferralClaimResponse = {
+  ok: boolean;
+  claimed: boolean;
+  milestone?: number;
+  reward?: ReferralReward;
+  reason?: string;
+  stats?: BackendReferralStats;
 };
 
 const getApiBaseUrl = () => {
@@ -73,13 +120,46 @@ export const saveCloudSave = async (playerId: string, gameState: GameState): Pro
 export const registerReferralWithBackend = async (
   playerId: string,
   referralCode: string,
-): Promise<{ ok: boolean; registered: boolean; rewardPending: boolean } | null> => {
+): Promise<ReferralRegisterResponse | null> => {
   if (!isBackendConfigured()) {
     return null;
   }
 
-  return requestJson<{ ok: boolean; registered: boolean; rewardPending: boolean }>("/api/referral/register", {
+  return requestJson<ReferralRegisterResponse>("/api/referral/register", {
     method: "POST",
     body: JSON.stringify({ playerId, referralCode }),
+  });
+};
+
+export const loadReferralStats = async (playerId: string): Promise<BackendReferralStats | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<BackendReferralStats>(`/api/referral/${encodeURIComponent(playerId)}`);
+};
+
+export const claimReferralMilestoneWithBackend = async (
+  playerId: string,
+  milestone: number,
+): Promise<ReferralClaimResponse | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<ReferralClaimResponse>("/api/referral/claim", {
+    method: "POST",
+    body: JSON.stringify({ playerId, milestone }),
+  });
+};
+
+export const simulateReferralWithBackend = async (playerId: string): Promise<ReferralRegisterResponse | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<ReferralRegisterResponse>("/api/referral/simulate", {
+    method: "POST",
+    body: JSON.stringify({ playerId }),
   });
 };

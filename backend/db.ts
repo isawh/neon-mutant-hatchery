@@ -1,7 +1,10 @@
 import Database from "better-sqlite3";
 import { createHash, randomUUID } from "crypto";
+import { config } from "dotenv";
 import { existsSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
+
+config();
 
 export type TelegramUser = {
   id: number;
@@ -30,8 +33,46 @@ export type CloudSaveRecord = {
 };
 
 export type ReferralRegisterResult =
-  | { ok: true; registered: true; rewardPending: true; inviterPlayerId: string }
+  | {
+      ok: true;
+      registered: true;
+      rewardPending: true;
+      inviterPlayerId: string;
+      invitedReward: ReferralReward;
+    }
   | { ok: true; registered: false; rewardPending: false; reason: "self_referral" | "duplicate" | "unknown_code" };
+
+export type ReferralReward = {
+  gems?: number;
+  eggs?: number;
+  premiumCapsules?: number;
+  rareChanceBonus?: number;
+  exclusiveColor?: string;
+};
+
+export type ReferralMilestone = {
+  invites: number;
+  label: string;
+  reward: ReferralReward;
+};
+
+export type ReferralStats = {
+  playerId: string;
+  referralCode: string;
+  referredBy: string | null;
+  inviteCount: number;
+  claimedMilestones: number[];
+  milestones: Array<ReferralMilestone & { claimed: boolean; claimable: boolean }>;
+};
+
+export type ReferralClaimResult =
+  | { ok: true; claimed: true; milestone: number; reward: ReferralReward; stats: ReferralStats }
+  | {
+      ok: true;
+      claimed: false;
+      reason: "unknown_player" | "unknown_milestone" | "not_enough_invites" | "already_claimed";
+      stats?: ReferralStats;
+    };
 
 type PlayerRow = {
   id: string;
@@ -50,6 +91,20 @@ type SaveRow = {
   game_state_json: string;
   updated_at: string;
 };
+
+type MilestoneClaimRow = {
+  milestone: number;
+};
+
+export const REFERRAL_MILESTONES: ReferralMilestone[] = [
+  { invites: 1, reward: { gems: 2, premiumCapsules: 1 }, label: "2 gems + premium capsule" },
+  { invites: 3, reward: { gems: 5, eggs: 2 }, label: "5 gems + 2 capsules" },
+  { invites: 5, reward: { gems: 8, rareChanceBonus: 3 }, label: "8 gems + rare chance" },
+  { invites: 10, reward: { gems: 15, premiumCapsules: 3, exclusiveColor: "#00ffd5" }, label: "Neon mint color" },
+  { invites: 25, reward: { gems: 40, premiumCapsules: 8, exclusiveColor: "#ffffff" }, label: "Prismatic lab kit" },
+];
+
+const INVITED_PLAYER_REWARD: ReferralReward = { premiumCapsules: 1 };
 
 const databasePath = process.env.SQLITE_PATH ?? join(process.cwd(), "data", "neon-hatch.db");
 
@@ -98,8 +153,18 @@ db.exec(`
     FOREIGN KEY (invited_player_id) REFERENCES players(id)
   );
 
+  CREATE TABLE IF NOT EXISTS referral_milestone_claims (
+    player_id TEXT NOT NULL,
+    milestone INTEGER NOT NULL,
+    reward_json TEXT NOT NULL,
+    claimed_at TEXT NOT NULL,
+    PRIMARY KEY (player_id, milestone),
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+  );
+
   CREATE INDEX IF NOT EXISTS idx_players_referral_code ON players(referral_code);
   CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_player_id);
+  CREATE INDEX IF NOT EXISTS idx_referral_claims_player ON referral_milestone_claims(player_id);
 `);
 
 const mapPlayerRow = (row: PlayerRow): PlayerRecord => ({
@@ -215,6 +280,78 @@ export const writeSave = (playerId: string, gameState: unknown): CloudSaveRecord
   };
 };
 
+export const getReferralStats = (playerId: string): ReferralStats | null => {
+  const player = findPlayerById(playerId);
+  if (!player) {
+    return null;
+  }
+
+  const inviteCount = (
+    db.prepare("SELECT COUNT(*) AS count FROM referrals WHERE inviter_player_id = ?").get(playerId) as
+      | { count: number }
+      | undefined
+  )?.count ?? 0;
+  const claimedMilestones = (
+    db.prepare("SELECT milestone FROM referral_milestone_claims WHERE player_id = ? ORDER BY milestone").all(playerId) as
+      | MilestoneClaimRow[]
+      | undefined
+  )?.map((row) => row.milestone) ?? [];
+  const claimedSet = new Set(claimedMilestones);
+
+  return {
+    playerId,
+    referralCode: player.referralCode,
+    referredBy: player.referredBy,
+    inviteCount,
+    claimedMilestones,
+    milestones: REFERRAL_MILESTONES.map((milestone) => ({
+      ...milestone,
+      claimed: claimedSet.has(milestone.invites),
+      claimable: inviteCount >= milestone.invites && !claimedSet.has(milestone.invites),
+    })),
+  };
+};
+
+export const claimReferralMilestone = (playerId: string, milestone: number): ReferralClaimResult => {
+  const stats = getReferralStats(playerId);
+  if (!stats) {
+    return { ok: true, claimed: false, reason: "unknown_player" };
+  }
+
+  const milestoneConfig = REFERRAL_MILESTONES.find((item) => item.invites === milestone);
+  if (!milestoneConfig) {
+    return { ok: true, claimed: false, reason: "unknown_milestone", stats };
+  }
+
+  if (stats.claimedMilestones.includes(milestone)) {
+    return { ok: true, claimed: false, reason: "already_claimed", stats };
+  }
+
+  if (stats.inviteCount < milestone) {
+    return { ok: true, claimed: false, reason: "not_enough_invites", stats };
+  }
+
+  const now = new Date().toISOString();
+  try {
+    db.prepare(
+      `
+        INSERT INTO referral_milestone_claims (player_id, milestone, reward_json, claimed_at)
+        VALUES (?, ?, ?, ?)
+      `,
+    ).run(playerId, milestone, JSON.stringify(milestoneConfig.reward), now);
+  } catch {
+    return { ok: true, claimed: false, reason: "already_claimed", stats: getReferralStats(playerId) ?? stats };
+  }
+
+  return {
+    ok: true,
+    claimed: true,
+    milestone,
+    reward: milestoneConfig.reward,
+    stats: getReferralStats(playerId) ?? stats,
+  };
+};
+
 export const registerReferral = (playerId: string, referralCode: string): ReferralRegisterResult => {
   const invitedPlayer = findPlayerById(playerId);
   const inviter = findPlayerByReferralCode(referralCode);
@@ -255,5 +392,58 @@ export const registerReferral = (playerId: string, referralCode: string): Referr
     return { ok: true, registered: false, rewardPending: false, reason: "duplicate" };
   }
 
-  return { ok: true, registered: true, rewardPending: true, inviterPlayerId: inviter.id };
+  return {
+    ok: true,
+    registered: true,
+    rewardPending: true,
+    inviterPlayerId: inviter.id,
+    invitedReward: INVITED_PLAYER_REWARD,
+  };
+};
+
+export const simulateReferralForPlayer = (inviterPlayerId: string): ReferralRegisterResult => {
+  const inviter = findPlayerById(inviterPlayerId);
+  if (!inviter) {
+    return { ok: true, registered: false, rewardPending: false, reason: "unknown_code" };
+  }
+
+  const now = new Date().toISOString();
+  const invitedPlayerId = `dev_ref_${randomUUID()}`;
+  const referralId = randomUUID();
+
+  const transaction = db.transaction(() => {
+    db.prepare(
+      `
+        INSERT INTO players (
+          id, telegram_id, username, first_name, last_name, referral_code, referred_by, created_at, updated_at
+        )
+        VALUES (?, NULL, ?, ?, NULL, ?, ?, ?, ?)
+      `,
+    ).run(
+      invitedPlayerId,
+      `fake_${Date.now()}`,
+      "Simulated",
+      getStableReferralCode(invitedPlayerId),
+      inviter.id,
+      now,
+      now,
+    );
+
+    db.prepare(
+      `
+        INSERT INTO referrals (id, inviter_player_id, invited_player_id, referral_code, created_at, reward_claimed)
+        VALUES (?, ?, ?, ?, ?, 0)
+      `,
+    ).run(referralId, inviter.id, invitedPlayerId, inviter.referralCode, now);
+  });
+
+  transaction();
+
+  return {
+    ok: true,
+    registered: true,
+    rewardPending: true,
+    inviterPlayerId: inviter.id,
+    invitedReward: INVITED_PLAYER_REWARD,
+  };
 };

@@ -1,3 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+.smoke-test/
+.balance-sim/
+backend/dist/
+backend/data/*.db*

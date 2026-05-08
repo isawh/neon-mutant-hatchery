@@ -43,7 +43,6 @@ import {
   getTotalIncomePerMinute,
   getUpgradeCost,
   hatchEgg,
-  recordInviteShare,
   resetOnboardingProgress,
   toggleFavoriteCreature,
   upgradeCreature,
@@ -63,15 +62,24 @@ import {
   shareTelegramInvite,
 } from "./telegram";
 import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService";
-import { authenticateWithTelegram, isBackendConfigured, loadCloudSave, saveCloudSave } from "./services/apiClient";
+import {
+  authenticateWithTelegram,
+  claimReferralMilestoneWithBackend,
+  isBackendConfigured,
+  loadCloudSave,
+  loadReferralStats,
+  registerReferralWithBackend,
+  saveCloudSave,
+  simulateReferralWithBackend,
+  type BackendReferralStats,
+  type ReferralReward,
+} from "./services/apiClient";
 import { getCurrentPlayer, isTelegramEnvironment } from "./services/authService";
 import { buildCreatureMetadata, mockMintCreature } from "./services/nftService";
 import { getProducts, purchaseProduct, type MockProduct, type MockProductId } from "./services/paymentService";
 import {
   buildReferralLink,
-  claimReferralMilestone,
   ensureReferralCode,
-  registerIncomingReferral,
   syncReferralStats,
 } from "./services/referralService";
 import type { AchievementId, Creature, GameState, LimitedOfferId, MissionId, Rarity, TabId, TutorialTaskId } from "./types";
@@ -195,13 +203,7 @@ const getIncomingReferralCode = () => {
 const preparePlayableState = (baseState: GameState, incomingReferral = "") => {
   const loaded = calculateOfflineIncome(baseState);
   const state = ensureProgressionState(
-    applyStarterRewards(
-      ensureReferralCode(
-        ensureLiveOpsState(
-          syncReferralStats(registerIncomingReferral(applyLoginStreak(loaded.state), incomingReferral)),
-        ),
-      ),
-    ),
+    applyStarterRewards(ensureReferralCode(ensureLiveOpsState(syncReferralStats(applyLoginStreak(loaded.state))))),
   );
 
   return {
@@ -450,6 +452,8 @@ export default function App() {
   const [lastCloudSyncAt, setLastCloudSyncAt] = useState("");
   const [saveSource, setSaveSource] = useState<SaveSource>("local");
   const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
+  const [backendReferralStats, setBackendReferralStats] = useState<BackendReferralStats | null>(null);
+  const [referralBusy, setReferralBusy] = useState(false);
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
@@ -505,8 +509,8 @@ export default function App() {
   const currentTutorialTask = state.tutorialTasks.find((task) => !task.claimed) ?? null;
   const tutorialTaskReady = Boolean(currentTutorialTask?.completed && !currentTutorialTask.claimed);
   const referralLink = useMemo(() => {
-    return buildReferralLink(state.referralCode);
-  }, [state.referralCode]);
+    return buildReferralLink(backendReferralStats?.referralCode ?? state.referralCode);
+  }, [backendReferralStats?.referralCode, state.referralCode]);
   const detailCreature = detailCreatureId
     ? state.creatures.find((creature) => creature.id === detailCreatureId) ?? null
     : null;
@@ -549,6 +553,48 @@ export default function App() {
     setAnalyticsCount(getAnalyticsEventCount());
   };
 
+  const applyBackendReferralReward = (reward: ReferralReward) => {
+    setState((current) =>
+      ensureProgressionState({
+        ...current,
+        gems: current.gems + (reward.gems ?? 0),
+        eggs: current.eggs + (reward.eggs ?? 0),
+        premiumCapsules: current.premiumCapsules + (reward.premiumCapsules ?? 0),
+        rareChanceBonus: current.rareChanceBonus + (reward.rareChanceBonus ?? 0),
+        exclusiveColors: reward.exclusiveColor
+          ? Array.from(new Set([...current.exclusiveColors, reward.exclusiveColor]))
+          : current.exclusiveColors,
+        lastActiveAt: Date.now(),
+      }),
+    );
+  };
+
+  const applyBackendReferralStats = (stats: BackendReferralStats) => {
+    setBackendReferralStats(stats);
+    setState((current) =>
+      ensureProgressionState({
+        ...current,
+        referralCode: stats.referralCode,
+        referredBy: stats.referredBy ?? current.referredBy,
+        inviteCount: stats.inviteCount,
+        claimedInviteMilestones: stats.claimedMilestones,
+        lastActiveAt: Date.now(),
+      }),
+    );
+  };
+
+  const refreshBackendReferralStats = async (playerId: string) => {
+    if (!backendConfigured) {
+      return null;
+    }
+
+    const stats = await loadReferralStats(playerId);
+    if (stats) {
+      applyBackendReferralStats(stats);
+    }
+    return stats;
+  };
+
   const applyLoadedState = (
     nextState: GameState,
     earned: number,
@@ -566,9 +612,6 @@ export default function App() {
     }
     if (cloudSyncedAt) {
       setLastCloudSyncAt(cloudSyncedAt);
-    }
-    if (incomingReferral && nextState.referralRewardClaimed) {
-      notify("Referral activated: premium capsule added", "event");
     }
     if (nextState.activeEvent?.endsAt && nextState.activeEvent.endsAt > Date.now()) {
       notify(nextState.activeEvent.title, "event");
@@ -672,6 +715,29 @@ export default function App() {
         }
 
         setCloudPlayerId(auth.playerId);
+        const syncBackendReferrals = async () => {
+          if (auth.player?.referralCode) {
+            setState((current) =>
+              ensureProgressionState({
+                ...current,
+                referralCode: auth.player?.referralCode ?? current.referralCode,
+                referredBy: auth.player?.referredBy ?? current.referredBy,
+                lastActiveAt: Date.now(),
+              }),
+            );
+          }
+
+          if (incomingReferral && incomingReferral !== auth.player?.referralCode) {
+            const registration = await registerReferralWithBackend(auth.playerId, incomingReferral);
+            if (registration?.registered && registration.invitedReward) {
+              applyBackendReferralReward(registration.invitedReward);
+              notify("Referral activated: premium capsule added", "event");
+            }
+          }
+
+          await refreshBackendReferralStats(auth.playerId);
+        };
+
         const cloudSave = await loadCloudSave(auth.playerId);
         setBackendConnected(true);
         cloudReadyRef.current = true;
@@ -689,12 +755,14 @@ export default function App() {
               cloudSave.updatedAt ?? new Date().toISOString(),
             );
             setStateLoadError(false);
+            await syncBackendReferrals();
             return;
           }
         }
 
         setSaveSource("local");
         lastCloudSavedJsonRef.current = JSON.stringify(localPlayable.state);
+        await syncBackendReferrals();
       } catch (error) {
         console.warn("[cloud-save] Backend unavailable; continuing with localStorage.", error);
         setBackendConnected(false);
@@ -945,6 +1013,12 @@ export default function App() {
   };
 
   const handleCopyReferral = async () => {
+    if (!backendReferralStats) {
+      notify("Backend referral sync required", "event");
+      haptic.error();
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(referralLink);
       notify("Referral link copied", "good");
@@ -956,11 +1030,16 @@ export default function App() {
   };
 
   const handleShareReferral = () => {
+    if (!backendReferralStats) {
+      notify("Backend referral sync required", "event");
+      haptic.error();
+      return;
+    }
+
     const text = "Hatch neon mutants with me. Use my invite and get a premium capsule.";
     shareTelegramInvite(referralLink, text);
-    setState((current) => ensureProgressionState(recordInviteShare(current)));
-    notify("Invite sent: +1 gem", "good");
-    track("referral_shared", { code: state.referralCode });
+    notify("Invite link opened", "good");
+    track("referral_shared", { code: backendReferralStats?.referralCode ?? state.referralCode });
     haptic.impact("medium");
   };
 
@@ -975,11 +1054,62 @@ export default function App() {
     haptic.impact(recentRareHatch.rarity === "Secret" ? "heavy" : "medium");
   };
 
-  const handleInviteMilestone = (invites: number) => {
-    spendOrWarn(claimReferralMilestone(state, invites), () => {
+  const handleInviteMilestone = async (invites: number) => {
+    if (!backendConfigured || !cloudPlayerId) {
+      notify("Backend referral sync required", "event");
+      haptic.error();
+      return;
+    }
+
+    setReferralBusy(true);
+    try {
+      const result = await claimReferralMilestoneWithBackend(cloudPlayerId, invites);
+      if (!result?.claimed || !result.reward) {
+        notify("Milestone is not ready", "event");
+        haptic.error();
+        if (result?.stats) {
+          applyBackendReferralStats(result.stats);
+        }
+        return;
+      }
+
+      applyBackendReferralReward(result.reward);
+      if (result.stats) {
+        applyBackendReferralStats(result.stats);
+      } else {
+        await refreshBackendReferralStats(cloudPlayerId);
+      }
       notify(`Invite milestone ${invites} claimed`, "good");
       haptic.success();
-    });
+    } catch (error) {
+      console.warn("[referral] Milestone claim failed.", error);
+      notify("Milestone claim failed", "event");
+      haptic.error();
+    } finally {
+      setReferralBusy(false);
+    }
+  };
+
+  const handleSimulateReferral = async () => {
+    if (!backendConfigured || !cloudPlayerId) {
+      notify("Backend referral sync required", "event");
+      haptic.error();
+      return;
+    }
+
+    setReferralBusy(true);
+    try {
+      await simulateReferralWithBackend(cloudPlayerId);
+      await refreshBackendReferralStats(cloudPlayerId);
+      notify("Simulated referral added", "good");
+      haptic.impact("medium");
+    } catch (error) {
+      console.warn("[referral] Simulate referral failed.", error);
+      notify("Simulation failed", "event");
+      haptic.error();
+    } finally {
+      setReferralBusy(false);
+    }
   };
 
   const handleMissionClaim = (missionId: MissionId) => {
@@ -1516,26 +1646,30 @@ export default function App() {
                   <p className="eyebrow">Referral lab</p>
                   <h2>Invite friends</h2>
                 </div>
-                <strong>{state.inviteCount} invites</strong>
+                <strong>{backendReferralStats ? `${backendReferralStats.inviteCount} invites` : "Backend required"}</strong>
               </div>
               <div className="referral-code">
-                <span>{state.referralCode}</span>
-                <button className="mini-button" onClick={handleCopyReferral}>
+                <span>{backendReferralStats?.referralCode ?? "Sync required"}</span>
+                <button className="mini-button" disabled={!backendReferralStats} onClick={handleCopyReferral}>
                   Copy
                 </button>
               </div>
-              <button className="primary-button" onClick={handleShareReferral}>
+              <button className="primary-button" disabled={!backendReferralStats} onClick={handleShareReferral}>
                 Share in Telegram
               </button>
               <div className="milestone-list">
-                {INVITE_MILESTONES.map((milestone) => {
-                  const claimed = state.claimedInviteMilestones.includes(milestone.invites);
-                  const ready = state.inviteCount >= milestone.invites && !claimed;
+                {(backendReferralStats?.milestones ?? INVITE_MILESTONES.map((milestone) => ({
+                  ...milestone,
+                  claimed: false,
+                  claimable: false,
+                }))).map((milestone) => {
+                  const claimed = milestone.claimed;
+                  const ready = milestone.claimable;
                   return (
                     <button
                       key={milestone.invites}
                       className={`milestone-row ${ready ? "ready" : ""}`}
-                      disabled={!ready}
+                      disabled={!ready || referralBusy}
                       onClick={() => handleInviteMilestone(milestone.invites)}
                     >
                       <span>{milestone.invites} invite{milestone.invites === 1 ? "" : "s"}</span>
@@ -1544,6 +1678,9 @@ export default function App() {
                   );
                 })}
               </div>
+              {!backendReferralStats ? (
+                <div className="debug-warning">Backend referral data unavailable. Invite progress is paused.</div>
+              ) : null}
             </div>
             <div className="debug-panel">
               <div className="section-heading">
@@ -1593,7 +1730,7 @@ export default function App() {
                   value={telegramViewport.isExpanded === null ? "Unknown" : telegramViewport.isExpanded ? "Yes" : "No"}
                 />
                 <StatPill label="Events" value={formatNumber(analyticsCount)} />
-                <StatPill label="Referral" value={state.referralCode || "Pending"} />
+                <StatPill label="Referral" value={backendReferralStats?.referralCode ?? state.referralCode ?? "Pending"} />
                 <StatPill label="Reset ver" value={DEV_SAVE_RESET_VERSION} />
                 <StatPill label="Stored ver" value={storedDevResetVersion || "None"} />
               </div>
@@ -1610,6 +1747,13 @@ export default function App() {
                 onClick={forceCloudLoad}
               >
                 {cloudSyncBusy ? "Syncing..." : "Force Cloud Load"}
+              </button>
+              <button
+                className="mini-button"
+                disabled={!backendConfigured || !cloudPlayerId || referralBusy}
+                onClick={handleSimulateReferral}
+              >
+                {referralBusy ? "Simulating..." : "Simulate Referral"}
               </button>
               <button
                 className="mini-button"

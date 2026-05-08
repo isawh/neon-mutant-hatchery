@@ -65,6 +65,7 @@ Tables:
 - `players`: Telegram player identity, referral code, optional referrer, timestamps.
 - `saves`: one cloud save JSON payload per player.
 - `referrals`: one referral attribution row per invited player.
+- `referral_milestone_claims`: claimed invite milestone rewards per inviter.
 
 SQLite is a good development step because it survives server restarts and keeps the schema real. It is still not the final production database plan: before launch, move to a managed database, add migrations/backups, add request authorization on save routes, and harden referral reward attribution.
 
@@ -154,6 +155,52 @@ Rules enforced:
 - Reject self-referrals.
 - Reject duplicate referral attribution.
 - Prevent changing a player's referrer after it is set.
+
+### `GET /api/referral/:playerId`
+
+Returns backend-authoritative referral progress.
+
+```json
+{
+  "playerId": "tg_123",
+  "referralCode": "ABC123DEF0",
+  "referredBy": null,
+  "inviteCount": 3,
+  "claimedMilestones": [1],
+  "milestones": [
+    {
+      "invites": 3,
+      "label": "5 gems + 2 capsules",
+      "reward": { "gems": 5, "eggs": 2 },
+      "claimed": false,
+      "claimable": true
+    }
+  ]
+}
+```
+
+### `POST /api/referral/claim`
+
+Claims a backend-validated invite milestone.
+
+```json
+{
+  "playerId": "tg_123",
+  "milestone": 3
+}
+```
+
+The backend checks invite count, prevents duplicate claims, stores the claim, and returns the reward payload for the frontend to apply to the player's game save.
+
+### `POST /api/referral/simulate`
+
+Development-only endpoint. Creates a fake referred player and attaches it to the current inviter so the referral UI can be tested locally.
+
+```json
+{
+  "playerId": "tg_123"
+}
+```
 
 TODO before production:
 

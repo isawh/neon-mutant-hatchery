@@ -3,11 +3,14 @@ import cors from "cors";
 import { config } from "dotenv";
 import { createHmac, timingSafeEqual } from "crypto";
 import {
+  claimReferralMilestone,
   findOrCreatePlayer,
   findPlayerById,
   getDevPlayer,
+  getReferralStats,
   loadSave,
   registerReferral,
+  simulateReferralForPlayer,
   writeSave,
   type PlayerRecord,
   type TelegramUser,
@@ -157,6 +160,51 @@ app.post("/api/referral/register", (request: any, response: any) => {
 
   const result = registerReferral(playerId, referralCode);
   response.json({ playerId, referralCode, ...result });
+});
+
+app.get("/api/referral/:playerId", (request: any, response: any) => {
+  const playerId = String(request.params.playerId ?? "");
+  if (!playerId) {
+    response.status(400).json({ error: "playerId is required" });
+    return;
+  }
+
+  const stats = getReferralStats(playerId);
+  if (!stats) {
+    response.status(404).json({ error: "Player not found" });
+    return;
+  }
+
+  response.json(stats);
+});
+
+app.post("/api/referral/claim", (request: any, response: any) => {
+  const playerId = typeof request.body?.playerId === "string" ? request.body.playerId.trim() : "";
+  const milestone = Number(request.body?.milestone);
+
+  if (!playerId || !Number.isFinite(milestone)) {
+    response.status(400).json({ error: "Valid playerId and milestone are required" });
+    return;
+  }
+
+  const result = claimReferralMilestone(playerId, milestone);
+  response.json({ playerId, ...result });
+});
+
+app.post("/api/referral/simulate", (request: any, response: any) => {
+  if (nodeEnv === "production") {
+    response.status(403).json({ error: "Referral simulation is development-only" });
+    return;
+  }
+
+  const playerId = typeof request.body?.playerId === "string" ? request.body.playerId.trim() : "";
+  if (!playerId) {
+    response.status(400).json({ error: "playerId is required" });
+    return;
+  }
+
+  const result = simulateReferralForPlayer(playerId);
+  response.json({ playerId, stats: getReferralStats(playerId), ...result });
 });
 
 app.listen(port, () => {
