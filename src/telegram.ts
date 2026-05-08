@@ -60,6 +60,15 @@ const isMobileTelegramPlatform = (platform = "") =>
   ["android", "android_x", "ios", "iphone", "ipad"].includes(platform.toLowerCase()) ||
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+const isDesktopTelegramPlatform = (platform = "") => {
+  const normalized = platform.toLowerCase();
+  return ["tdesktop", "desktop", "web", "macos", "windows", "win", "linux"].some((desktopPlatform) =>
+    normalized.includes(desktopPlatform),
+  );
+};
+
+const isDesktopTelegramViewport = (platform = "") => window.innerWidth >= 700 || isDesktopTelegramPlatform(platform);
+
 const safeCall = (call: () => void) => {
   try {
     call();
@@ -92,14 +101,20 @@ const getRawViewportSnapshot = () => {
     typeof webApp?.viewportStableHeight === "number" && webApp.viewportStableHeight > 0
       ? webApp.viewportStableHeight
       : null;
-  const lockedFullscreenHeight = Boolean(webApp?.isFullscreen) && appliedStableHeight > 0;
+  const platform = webApp?.platform ?? "browser";
+  const isDesktop = isDesktopTelegramViewport(platform);
+  const lockedFullscreenHeight = Boolean(webApp?.isFullscreen) && appliedStableHeight > 0 && !isDesktop;
 
   return {
     webApp,
+    platform,
+    isDesktop,
     viewportHeight,
     viewportStableHeight,
     windowHeight,
-    candidateHeight: viewportStableHeight ?? (lockedFullscreenHeight ? appliedStableHeight : windowHeight),
+    candidateHeight: isDesktop
+      ? windowHeight
+      : viewportStableHeight ?? (lockedFullscreenHeight ? appliedStableHeight : windowHeight),
     isFullscreen: Boolean(webApp?.isFullscreen),
     isExpanded: Boolean(webApp?.isExpanded),
   };
@@ -170,6 +185,7 @@ export const syncTelegramViewportCss = () => {
   const previousStableHeight = appliedStableHeight;
   const nextStableHeight = snapshot.candidateHeight;
   const fullscreenChanged = lastFullscreenState !== snapshot.isFullscreen;
+  const desktopShrinkAmount = previousStableHeight - nextStableHeight;
   const reopenDetected =
     Boolean(previousStableHeight) &&
     lastRawViewportHeight !== null &&
@@ -181,13 +197,35 @@ export const syncTelegramViewportCss = () => {
   lastRawStableHeight = snapshot.viewportStableHeight;
   lastFullscreenState = snapshot.isFullscreen;
 
+  if (snapshot.isDesktop && previousStableHeight > 0 && desktopShrinkAmount > 80) {
+    logViewportSync(pendingViewportReason, "ignored", {
+      oldHeight: previousStableHeight,
+      newHeight: nextStableHeight,
+      reason: "desktop_shrink_guard",
+      viewportHeight: snapshot.viewportHeight,
+      viewportStableHeight: snapshot.viewportStableHeight,
+      windowInnerHeight: snapshot.windowHeight,
+      appliedAppHeight: px(previousStableHeight),
+      platform: snapshot.platform,
+      isDesktop: snapshot.isDesktop,
+      isFullscreen: snapshot.isFullscreen,
+      reopenDetected,
+    });
+    return;
+  }
+
   if (isBadViewportHeight(nextStableHeight, previousStableHeight)) {
     logViewportSync(pendingViewportReason, "ignored", {
+      oldHeight: previousStableHeight || null,
+      newHeight: nextStableHeight,
+      reason: "invalid_or_sudden_mobile_height",
       viewportHeight: snapshot.viewportHeight,
       viewportStableHeight: snapshot.viewportStableHeight,
       windowInnerHeight: snapshot.windowHeight,
       previousStableHeight,
       appliedAppHeight: previousStableHeight ? px(previousStableHeight) : "unchanged",
+      platform: snapshot.platform,
+      isDesktop: snapshot.isDesktop,
       isFullscreen: snapshot.isFullscreen,
       reopenDetected,
     });
@@ -197,13 +235,18 @@ export const syncTelegramViewportCss = () => {
   appliedStableHeight = nextStableHeight;
   lastAppliedAt = Date.now();
 
-  const viewportHeight = px(snapshot.viewportHeight ?? snapshot.windowHeight);
+  const viewportHeight = px(
+    snapshot.isDesktop ? snapshot.windowHeight : snapshot.viewportHeight ?? snapshot.windowHeight,
+  );
   const stableHeight = px(nextStableHeight);
+  const telegramStableHeight = px(
+    snapshot.isDesktop ? nextStableHeight : snapshot.viewportStableHeight ?? nextStableHeight,
+  );
   const safeAreaTop = `${getSafeAreaValue(webApp, "top")}px`;
   const safeAreaBottom = `${getSafeAreaValue(webApp, "bottom")}px`;
 
   documentRoot.style.setProperty("--tg-viewport-height", viewportHeight);
-  documentRoot.style.setProperty("--tg-viewport-stable-height", stableHeight);
+  documentRoot.style.setProperty("--tg-viewport-stable-height", telegramStableHeight);
   documentRoot.style.setProperty("--tg-safe-area-top", safeAreaTop);
   documentRoot.style.setProperty("--tg-safe-area-bottom", safeAreaBottom);
   documentRoot.style.setProperty("--app-height", stableHeight);
@@ -217,6 +260,8 @@ export const syncTelegramViewportCss = () => {
     viewportStableHeight: snapshot.viewportStableHeight,
     windowInnerHeight: snapshot.windowHeight,
     appliedAppHeight: stableHeight,
+    platform: snapshot.platform,
+    isDesktop: snapshot.isDesktop,
     isFullscreen: snapshot.isFullscreen,
     isExpanded: snapshot.isExpanded,
     fullscreenChanged,
@@ -237,6 +282,8 @@ const scheduleTelegramViewportCssSync = (reason: string) => {
     viewportStableHeight: snapshot.viewportStableHeight,
     windowInnerHeight: snapshot.windowHeight,
     previousStableHeight: appliedStableHeight || null,
+    platform: snapshot.platform,
+    isDesktop: snapshot.isDesktop,
     isFullscreen: snapshot.isFullscreen,
   });
 

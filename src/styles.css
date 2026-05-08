@@ -3069,7 +3069,8 @@ p {
 
   .hatch-chamber-column .incubator {
     flex: 1 1 auto;
-    height: clamp(340px, calc(var(--app-height, 100dvh) * 0.45), 520px);
+    height: clamp(360px, 42vh, 520px);
+    min-height: 360px;
   }
 
   .hatch-side-column {
@@ -3077,7 +3078,7 @@ p {
   }
 
   .capsule {
-    height: clamp(220px, calc(var(--app-height, 100dvh) * 0.32), 360px);
+    height: clamp(220px, 30vh, 360px);
   }
 
   .bottom-nav {
@@ -3111,7 +3112,7 @@ p {
     align-items: center;
     justify-content: center;
     min-height: 360px;
-    height: clamp(360px, calc(var(--app-height, 100dvh) * 0.46), 560px);
+    height: clamp(360px, 42vh, 520px);
     padding: 28px;
   }
 
@@ -3120,13 +3121,13 @@ p {
     inset: auto;
     top: auto;
     bottom: auto;
-    height: clamp(220px, calc(var(--app-height, 100dvh) * 0.32), 360px);
+    height: clamp(220px, 30vh, 360px);
     max-height: 80%;
     transform: none;
   }
 
   .egg-core {
-    height: clamp(110px, calc(var(--app-height, 100dvh) * 0.16), 180px);
+    height: clamp(110px, 15vh, 180px);
     max-height: 45%;
   }
 }
@@ -3142,6 +3143,49 @@ p {
 
   .hatch-chamber-column .incubator {
     min-height: 360px;
-    height: clamp(360px, calc(var(--app-height, 100dvh) * 0.46), 560px);
+    height: clamp(360px, 42vh, 520px);
+  }
+}
+
+@media (min-width: 700px) {
+  .app-shell {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .app-content {
+    height: 100%;
+    max-height: 100dvh;
+  }
+
+  .incubator,
+  .hatch-chamber-column .incubator {
+    min-height: 360px;
+    height: clamp(360px, 42vh, 520px);
+  }
+
+  .capsule {
+    height: clamp(220px, 30vh, 360px);
+    max-height: 80%;
+  }
+
+  .egg-core {
+    height: clamp(110px, 15vh, 180px);
+    max-height: 45%;
+  }
+}
+
+@supports not (height: 100dvh) {
+  @media (min-width: 700px) {
+    .app-shell {
+      height: 100vh;
+      min-height: 100vh;
+      max-height: 100vh;
+    }
+
+    .app-content {
+      max-height: 100vh;
+    }
   }
 }
