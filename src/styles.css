@@ -442,7 +442,7 @@ p {
   position: relative;
   display: grid;
   place-items: center;
-  height: clamp(280px, 45dvh, 520px);
+  height: clamp(280px, calc(var(--app-height, 100dvh) * 0.45), 520px);
   min-height: 0;
   padding: 18px;
   overflow: hidden;
@@ -587,7 +587,7 @@ p {
   position: relative;
   z-index: 2;
   width: auto;
-  height: clamp(180px, 32dvh, 360px);
+  height: clamp(180px, calc(var(--app-height, 100dvh) * 0.32), 360px);
   max-width: calc(100% - 24px);
   max-height: calc(100% - 36px);
   aspect-ratio: 0.72;
@@ -685,7 +685,7 @@ p {
 
 .egg-core {
   width: auto;
-  height: clamp(90px, 16dvh, 180px);
+  height: clamp(90px, calc(var(--app-height, 100dvh) * 0.16), 180px);
   max-height: 58%;
   aspect-ratio: 0.78;
   border-radius: 54% 46% 48% 52% / 62% 58% 42% 38%;
@@ -3010,12 +3010,12 @@ p {
   }
 
   .incubator {
-    height: clamp(280px, 45dvh, 520px);
+    height: clamp(280px, calc(var(--app-height, 100dvh) * 0.45), 520px);
     padding: 24px;
   }
 
   .capsule {
-    height: clamp(200px, 32dvh, 360px);
+    height: clamp(200px, calc(var(--app-height, 100dvh) * 0.32), 360px);
   }
 
   .panel,
@@ -3069,7 +3069,7 @@ p {
 
   .hatch-chamber-column .incubator {
     flex: 1 1 auto;
-    height: clamp(340px, 45dvh, 520px);
+    height: clamp(340px, calc(var(--app-height, 100dvh) * 0.45), 520px);
   }
 
   .hatch-side-column {
@@ -3077,7 +3077,7 @@ p {
   }
 
   .capsule {
-    height: clamp(220px, 32dvh, 360px);
+    height: clamp(220px, calc(var(--app-height, 100dvh) * 0.32), 360px);
   }
 
   .bottom-nav {
@@ -3111,7 +3111,7 @@ p {
     align-items: center;
     justify-content: center;
     min-height: 360px;
-    height: clamp(360px, 46dvh, 560px);
+    height: clamp(360px, calc(var(--app-height, 100dvh) * 0.46), 560px);
     padding: 28px;
   }
 
@@ -3120,13 +3120,13 @@ p {
     inset: auto;
     top: auto;
     bottom: auto;
-    height: clamp(220px, 32dvh, 360px);
+    height: clamp(220px, calc(var(--app-height, 100dvh) * 0.32), 360px);
     max-height: 80%;
     transform: none;
   }
 
   .egg-core {
-    height: clamp(110px, 16dvh, 180px);
+    height: clamp(110px, calc(var(--app-height, 100dvh) * 0.16), 180px);
     max-height: 45%;
   }
 }
@@ -3142,6 +3142,6 @@ p {
 
   .hatch-chamber-column .incubator {
     min-height: 360px;
-    height: clamp(360px, 46dvh, 560px);
+    height: clamp(360px, calc(var(--app-height, 100dvh) * 0.46), 560px);
   }
 }
