@@ -11,6 +11,10 @@ import type {
 
 export const STORAGE_KEY = "neon-mutant-hatchery:v1";
 
+// Temporary development reset switch.
+// Increase DEV_SAVE_RESET_VERSION to force all local saves to reset on every device after deploy.
+export const DEV_SAVE_RESET_VERSION = "test-reset-001";
+
 export const INITIAL_STATE: GameState = {
   coins: 0,
   gems: 0,

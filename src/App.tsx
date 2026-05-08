@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
+  DEV_SAVE_RESET_VERSION,
   INITIAL_STATE,
   INVITE_MILESTONES,
   LIMITED_OFFERS,
@@ -39,7 +40,13 @@ import {
   toggleFavoriteCreature,
   upgradeCreature,
 } from "./game";
-import { loadGameState, resetGameState, saveGameState } from "./storage";
+import {
+  forceResetGameStateNow,
+  getStoredDevSaveResetVersion,
+  loadGameState,
+  resetGameState,
+  saveGameState,
+} from "./storage";
 import {
   getTelegramStartParam,
   getTelegramViewportState,
@@ -401,6 +408,7 @@ export default function App() {
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
   const telegramViewport = getTelegramViewportState();
+  const storedDevResetVersion = getStoredDevSaveResetVersion();
   const totalSpecies = NAME_PREFIXES.length * NAME_SUFFIXES.length;
   const discoveredCount = new Set(state.discoveredCreatureNames).size;
   const undiscoveredCount = Math.max(0, totalSpecies - discoveredCount);
@@ -1311,6 +1319,8 @@ export default function App() {
                 />
                 <StatPill label="Events" value={formatNumber(analyticsCount)} />
                 <StatPill label="Referral" value={state.referralCode || "Pending"} />
+                <StatPill label="Reset ver" value={DEV_SAVE_RESET_VERSION} />
+                <StatPill label="Stored ver" value={storedDevResetVersion || "None"} />
               </div>
               <button
                 className="mini-button"
@@ -1328,6 +1338,24 @@ export default function App() {
                 }}
               >
                 Reset local save
+              </button>
+              <button
+                className="mini-button"
+                onClick={() => {
+                  setState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(forceResetGameStateNow()))));
+                  setAnalyticsCount(getAnalyticsEventCount());
+                  setOnboardingStep(0);
+                  setLastHatched(null);
+                  setRevealRarity(null);
+                  setScreenFlash(null);
+                  setRecentRareHatch(null);
+                  setBreedSelection([]);
+                  setShowOfflineModal(false);
+                  notify("Forced fresh save", "event");
+                  haptic.impact("heavy");
+                }}
+              >
+                Force Reset Save Now
               </button>
               <button
                 className="mini-button"

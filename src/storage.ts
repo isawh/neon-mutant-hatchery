@@ -1,4 +1,13 @@
-import { DAILY_MISSION_POOL, INITIAL_STATE, PASSIVE_TRAIT_CONFIG, RARITY_ORDER, STORAGE_KEY, TUTORIAL_TASKS } from "./constants";
+import {
+  DAILY_MISSION_POOL,
+  DEV_SAVE_RESET_VERSION,
+  INITIAL_STATE,
+  PASSIVE_TRAIT_CONFIG,
+  RARITY_ORDER,
+  STORAGE_KEY,
+  TUTORIAL_TASKS,
+} from "./constants";
+import { clearAnalyticsEvents } from "./services/analyticsService";
 import type {
   ActiveRareEvent,
   Creature,
@@ -13,6 +22,44 @@ import type {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const DEV_SAVE_RESET_VERSION_KEY = `${STORAGE_KEY}:dev-reset-version`;
+
+export const getStoredDevSaveResetVersion = () => {
+  try {
+    return localStorage.getItem(DEV_SAVE_RESET_VERSION_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+
+const writeStoredDevSaveResetVersion = () => {
+  try {
+    localStorage.setItem(DEV_SAVE_RESET_VERSION_KEY, DEV_SAVE_RESET_VERSION);
+  } catch {
+    // Storage can fail inside restrictive in-app browsers. The game should remain playable.
+  }
+};
+
+const clearLocalSaveForDevReset = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Ignore storage failures and continue with an in-memory fresh state.
+  }
+  clearAnalyticsEvents();
+};
+
+const ensureDevSaveResetVersion = () => {
+  const storedVersion = getStoredDevSaveResetVersion();
+  if (storedVersion === DEV_SAVE_RESET_VERSION) {
+    return false;
+  }
+
+  clearLocalSaveForDevReset();
+  writeStoredDevSaveResetVersion();
+  return true;
+};
 
 const isPassiveTrait = (value: unknown): value is PassiveTrait =>
   typeof value === "string" && value in PASSIVE_TRAIT_CONFIG;
@@ -136,6 +183,10 @@ const normalizeActiveEvent = (value: unknown): ActiveRareEvent | null => {
 
 export const loadGameState = (): GameState => {
   try {
+    if (ensureDevSaveResetVersion()) {
+      return { ...INITIAL_STATE, lastActiveAt: Date.now() };
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return INITIAL_STATE;
@@ -244,5 +295,11 @@ export const resetGameState = () => {
   } catch {
     // Ignore storage failures and return a clean in-memory state.
   }
+  return { ...INITIAL_STATE, lastActiveAt: Date.now() };
+};
+
+export const forceResetGameStateNow = () => {
+  clearLocalSaveForDevReset();
+  writeStoredDevSaveResetVersion();
   return { ...INITIAL_STATE, lastActiveAt: Date.now() };
 };

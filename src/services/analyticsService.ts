@@ -53,3 +53,11 @@ export const trackEvent = (name: AnalyticsEventName, payload?: Record<string, un
 export const getAnalyticsEvents = () => readEvents();
 
 export const getAnalyticsEventCount = () => readEvents().length;
+
+export const clearAnalyticsEvents = () => {
+  try {
+    localStorage.removeItem(ANALYTICS_KEY);
+  } catch {
+    // Analytics cleanup should never block reset flows.
+  }
+};
