@@ -1,0 +1,164 @@
+# Neon Mutant Hatchery Backend
+
+Minimal backend foundation for the Telegram Mini App.
+
+## Stack
+
+- Node.js
+- Express
+- TypeScript
+- cors
+- dotenv
+- crypto
+- SQLite via `better-sqlite3`
+
+## Setup
+
+```bash
+cd backend
+npm install
+copy .env.example .env
+```
+
+Set `BOT_TOKEN` to the token from BotFather.
+
+```env
+NODE_ENV=development
+PORT=8080
+BOT_TOKEN=123456:replace_with_your_telegram_bot_token
+CORS_ORIGIN=http://127.0.0.1:5174
+SQLITE_PATH=./data/neon-hatch.db
+```
+
+## Run
+
+```bash
+npm run dev
+```
+
+Build:
+
+```bash
+npm run build
+```
+
+Start compiled server:
+
+```bash
+npm start
+```
+
+## Endpoints
+
+## Database
+
+The backend uses SQLite for development persistence. By default the database file is:
+
+```text
+backend/data/neon-hatch.db
+```
+
+You can override it with `SQLITE_PATH`. The server creates the database directory, file, and tables on startup.
+
+Tables:
+
+- `players`: Telegram player identity, referral code, optional referrer, timestamps.
+- `saves`: one cloud save JSON payload per player.
+- `referrals`: one referral attribution row per invited player.
+
+SQLite is a good development step because it survives server restarts and keeps the schema real. It is still not the final production database plan: before launch, move to a managed database, add migrations/backups, add request authorization on save routes, and harden referral reward attribution.
+
+## Endpoints
+
+### `POST /api/auth/telegram`
+
+Validates Telegram WebApp `initData` using `BOT_TOKEN`.
+
+Request:
+
+```json
+{
+  "initData": "query-string-from-window.Telegram.WebApp.initData"
+}
+```
+
+Response:
+
+```json
+{
+  "playerId": "tg_123",
+  "telegramUser": {},
+  "isNewPlayer": true,
+  "player": {
+    "id": "tg_123",
+    "telegramId": "123",
+    "username": "player",
+    "firstName": "Player",
+    "lastName": null,
+    "referralCode": "ABC123DEF0",
+    "referredBy": null,
+    "createdAt": "2026-05-08T00:00:00.000Z",
+    "updatedAt": "2026-05-08T00:00:00.000Z"
+  }
+}
+```
+
+In non-production only, an empty `initData` creates or reuses a stable dev player in SQLite. This is dev-only and must not be used as production auth.
+
+### `GET /api/player/:playerId/save`
+
+Returns the SQLite-backed cloud save:
+
+```json
+{
+  "gameState": {},
+  "updatedAt": "2026-05-08T00:00:00.000Z"
+}
+```
+
+If no save exists:
+
+```json
+{
+  "gameState": null,
+  "updatedAt": null
+}
+```
+
+### `POST /api/player/:playerId/save`
+
+Stores:
+
+```json
+{
+  "gameState": {}
+}
+```
+
+The save is stored in the `saves` table as JSON. This keeps the current frontend save format intact while backend systems mature.
+
+### `POST /api/referral/register`
+
+Stores first-touch referral attribution in SQLite.
+
+```json
+{
+  "playerId": "tg_123",
+  "referralCode": "ABC123"
+}
+```
+
+Rules enforced:
+
+- Reject unknown referral codes.
+- Reject self-referrals.
+- Reject duplicate referral attribution.
+- Prevent changing a player's referrer after it is set.
+
+TODO before production:
+
+- Add authorization checks to save endpoints.
+- Add migrations and database backups.
+- Move from local SQLite to a managed production database.
+- Add rate limits and request logging.
+- Add real payment/NFT services separately when ready.

@@ -40,6 +40,7 @@ npm run preview
    - `VITE_APP_NAME`
    - `VITE_BOT_USERNAME`
    - `VITE_PUBLIC_APP_URL`
+   - `VITE_API_URL` only when a backend is deployed
 5. Deploy.
 
 ## BotFather Web App URL
@@ -55,7 +56,33 @@ After Vercel deploys, copy the production HTTPS URL, then configure the Telegram
 https://your-vercel-project.vercel.app
 ```
 
-The app is a static frontend. No backend, blockchain, or real payments are required for this deployment.
+The app still works as a static frontend when `VITE_API_URL` is empty. Local save remains localStorage-only in that mode.
+
+## Backend Foundation
+
+A minimal backend now lives in `backend/`.
+
+Run frontend:
+
+```bash
+npm install
+npm run dev
+```
+
+Run backend:
+
+```bash
+cd backend
+npm install
+copy .env.example .env
+npm run dev
+```
+
+Set `BOT_TOKEN` in `backend/.env` to the token from BotFather. Telegram auth validation cannot work in production without it.
+
+The backend currently uses in-memory `Map` storage for player profiles and cloud saves. This is temporary: all data is lost when the server restarts. The next backend step is adding a real database and authorization checks for cloud save endpoints.
+
+No real payments or NFT minting are implemented yet.
 
 ## Telegram Testing Checklist
 

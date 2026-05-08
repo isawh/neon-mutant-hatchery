@@ -26,6 +26,7 @@ type TelegramWebApp = {
   platform?: string;
   safeAreaInset?: TelegramSafeAreaInset;
   contentSafeAreaInset?: TelegramSafeAreaInset;
+  initData?: string;
   initDataUnsafe?: {
     start_param?: string;
   };
@@ -366,6 +367,8 @@ export const haptic = {
 };
 
 export const getTelegramStartParam = () => getWebApp()?.initDataUnsafe?.start_param ?? "";
+
+export const getTelegramInitData = () => getWebApp()?.initData ?? "";
 
 export const shareTelegramInvite = (url: string, text: string) => {
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;

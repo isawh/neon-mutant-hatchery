@@ -63,6 +63,7 @@ import {
   shareTelegramInvite,
 } from "./telegram";
 import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService";
+import { authenticateWithTelegram, isBackendConfigured, loadCloudSave, saveCloudSave } from "./services/apiClient";
 import { getCurrentPlayer, isTelegramEnvironment } from "./services/authService";
 import { buildCreatureMetadata, mockMintCreature } from "./services/nftService";
 import { getProducts, purchaseProduct, type MockProduct, type MockProductId } from "./services/paymentService";
@@ -176,14 +177,44 @@ const playSecretSoundPlaceholder = (creature: Creature) => {
   });
 };
 
-const loadPlayableState = () => {
+type SaveSource = "local" | "cloud";
+
+const getIncomingReferralCode = () => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
   try {
-    return {
-      state: ensureProgressionState(
-        applyStarterRewards(
-          ensureReferralCode(ensureLiveOpsState(applyLoginStreak(calculateOfflineIncome(loadGameState()).state))),
+    const url = new URL(window.location.href);
+    return url.searchParams.get("ref") ?? url.searchParams.get("startapp") ?? getTelegramStartParam() ?? "";
+  } catch {
+    return getTelegramStartParam() ?? "";
+  }
+};
+
+const preparePlayableState = (baseState: GameState, incomingReferral = "") => {
+  const loaded = calculateOfflineIncome(baseState);
+  const state = ensureProgressionState(
+    applyStarterRewards(
+      ensureReferralCode(
+        ensureLiveOpsState(
+          syncReferralStats(registerIncomingReferral(applyLoginStreak(loaded.state), incomingReferral)),
         ),
       ),
+    ),
+  );
+
+  return {
+    state,
+    offlineEarned: loaded.earned,
+  };
+};
+
+const loadPlayableState = () => {
+  try {
+    const playable = preparePlayableState(loadGameState());
+    return {
+      state: playable.state,
       error: false,
     };
   } catch {
@@ -414,14 +445,26 @@ export default function App() {
   const [screenFlash, setScreenFlash] = useState<Rarity | null>(null);
   const [recentRareHatch, setRecentRareHatch] = useState<Creature | null>(null);
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [backendConnected, setBackendConnected] = useState(false);
+  const [cloudPlayerId, setCloudPlayerId] = useState<string | null>(null);
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState("");
+  const [saveSource, setSaveSource] = useState<SaveSource>("local");
+  const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
+  const cloudReadyRef = useRef(false);
+  const cloudSaveTimerRef = useRef<number | null>(null);
+  const pendingCloudStateRef = useRef<GameState>(initialLoad.state);
+  const lastCloudSavedJsonRef = useRef("");
   const player = useMemo(() => getCurrentPlayer(), []);
   const products = useMemo(() => getProducts(), []);
   const pendingProduct = pendingProductId ? products.find((product) => product.id === pendingProductId) ?? null : null;
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
+  const backendConfigured = isBackendConfigured();
+  const currentPlayerId = cloudPlayerId ?? player.id;
+  const lastCloudSyncLabel = lastCloudSyncAt ? new Date(lastCloudSyncAt).toLocaleTimeString() : "Never";
   const telegramViewport = getTelegramViewportState();
   const storedDevResetVersion = getStoredDevSaveResetVersion();
   const totalSpecies = NAME_PREFIXES.length * NAME_SUFFIXES.length;
@@ -506,6 +549,87 @@ export default function App() {
     setAnalyticsCount(getAnalyticsEventCount());
   };
 
+  const applyLoadedState = (
+    nextState: GameState,
+    earned: number,
+    source: SaveSource,
+    incomingReferral = "",
+    cloudSyncedAt = "",
+  ) => {
+    setState(nextState);
+    saveGameState(nextState);
+    setOfflineEarned(earned);
+    setShowOfflineModal(earned > 0);
+    setSaveSource(source);
+    if (source === "cloud") {
+      lastCloudSavedJsonRef.current = JSON.stringify(nextState);
+    }
+    if (cloudSyncedAt) {
+      setLastCloudSyncAt(cloudSyncedAt);
+    }
+    if (incomingReferral && nextState.referralRewardClaimed) {
+      notify("Referral activated: premium capsule added", "event");
+    }
+    if (nextState.activeEvent?.endsAt && nextState.activeEvent.endsAt > Date.now()) {
+      notify(nextState.activeEvent.title, "event");
+    }
+  };
+
+  const forceCloudSave = async () => {
+    if (!backendConfigured || !cloudPlayerId) {
+      notify("Backend is not configured", "event");
+      return;
+    }
+
+    setCloudSyncBusy(true);
+    try {
+      const saved = await saveCloudSave(cloudPlayerId, state);
+      const syncedAt = saved?.updatedAt ?? new Date().toISOString();
+      lastCloudSavedJsonRef.current = JSON.stringify(state);
+      setLastCloudSyncAt(syncedAt);
+      setBackendConnected(true);
+      notify("Cloud save synced", "good");
+      haptic.impact("medium");
+    } catch (error) {
+      console.warn("[cloud-save] Force cloud save failed; continuing with localStorage.", error);
+      setBackendConnected(false);
+      notify("Cloud save failed", "event");
+      haptic.error();
+    } finally {
+      setCloudSyncBusy(false);
+    }
+  };
+
+  const forceCloudLoad = async () => {
+    if (!backendConfigured || !cloudPlayerId) {
+      notify("Backend is not configured", "event");
+      return;
+    }
+
+    setCloudSyncBusy(true);
+    try {
+      const cloudSave = await loadCloudSave(cloudPlayerId);
+      if (!cloudSave?.gameState) {
+        notify("No cloud save found", "event");
+        return;
+      }
+
+      const playable = preparePlayableState(cloudSave.gameState, getIncomingReferralCode());
+      applyLoadedState(playable.state, playable.offlineEarned, "cloud", "", cloudSave.updatedAt ?? new Date().toISOString());
+      setBackendConnected(true);
+      setStateLoadError(false);
+      notify("Cloud save loaded", "good");
+      haptic.impact("medium");
+    } catch (error) {
+      console.warn("[cloud-save] Force cloud load failed; continuing with localStorage.", error);
+      setBackendConnected(false);
+      notify("Cloud load failed", "event");
+      haptic.error();
+    } finally {
+      setCloudSyncBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (didInitRef.current) {
       return;
@@ -513,39 +637,117 @@ export default function App() {
     didInitRef.current = true;
     initTelegramFullscreen();
     track("app_open", { telegram: player.isTelegram });
-    try {
-      const loaded = calculateOfflineIncome(loadGameState());
-      const url = new URL(window.location.href);
-      const incomingReferral =
-        url.searchParams.get("ref") ?? url.searchParams.get("startapp") ?? getTelegramStartParam();
-      const loginState = applyStarterRewards(
-        ensureReferralCode(
-          ensureLiveOpsState(
-            syncReferralStats(registerIncomingReferral(applyLoginStreak(loaded.state), incomingReferral ?? "")),
-          ),
-        ),
-      );
-      setState(ensureProgressionState(loginState));
-      setOfflineEarned(loaded.earned);
-      setShowOfflineModal(loaded.earned > 0);
-      if (incomingReferral && loginState.referralRewardClaimed) {
-        notify("Referral activated: premium capsule added", "event");
+
+    const startup = async () => {
+      const incomingReferral = getIncomingReferralCode();
+      let localPlayable: ReturnType<typeof preparePlayableState>;
+      let localSavedAt = 0;
+
+      try {
+        const localState = loadGameState();
+        localSavedAt = localState.lastActiveAt || 0;
+        localPlayable = preparePlayableState(localState, incomingReferral);
+        applyLoadedState(localPlayable.state, localPlayable.offlineEarned, "local", incomingReferral);
+        setStateLoadError(false);
+      } catch (error) {
+        console.warn("[cloud-save] Local save load failed; using fresh state.", error);
+        localSavedAt = Date.now();
+        localPlayable = {
+          state: ensureProgressionState(applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() })),
+          offlineEarned: 0,
+        };
+        applyLoadedState(localPlayable.state, 0, "local");
+        setStateLoadError(true);
       }
-      if (loginState.activeEvent?.endsAt && loginState.activeEvent.endsAt > Date.now()) {
-        notify(loginState.activeEvent.title, "event");
+
+      if (!backendConfigured) {
+        cloudReadyRef.current = false;
+        return;
       }
-      setStateLoadError(false);
-    } catch {
-      setState(ensureProgressionState(applyStarterRewards({ ...INITIAL_STATE, lastActiveAt: Date.now() })));
-      setOfflineEarned(0);
-      setShowOfflineModal(false);
-      setStateLoadError(true);
-    }
+
+      try {
+        const auth = await authenticateWithTelegram();
+        if (!auth?.playerId) {
+          throw new Error("Backend auth did not return a playerId.");
+        }
+
+        setCloudPlayerId(auth.playerId);
+        const cloudSave = await loadCloudSave(auth.playerId);
+        setBackendConnected(true);
+        cloudReadyRef.current = true;
+
+        if (cloudSave?.gameState) {
+          const cloudUpdatedAt = cloudSave.updatedAt ? Date.parse(cloudSave.updatedAt) : 0;
+
+          if (cloudUpdatedAt > localSavedAt) {
+            const cloudPlayable = preparePlayableState(cloudSave.gameState, incomingReferral);
+            applyLoadedState(
+              cloudPlayable.state,
+              cloudPlayable.offlineEarned,
+              "cloud",
+              incomingReferral,
+              cloudSave.updatedAt ?? new Date().toISOString(),
+            );
+            setStateLoadError(false);
+            return;
+          }
+        }
+
+        setSaveSource("local");
+        lastCloudSavedJsonRef.current = JSON.stringify(localPlayable.state);
+      } catch (error) {
+        console.warn("[cloud-save] Backend unavailable; continuing with localStorage.", error);
+        setBackendConnected(false);
+        cloudReadyRef.current = false;
+      }
+    };
+
+    void startup();
   }, []);
 
   useEffect(() => {
     saveGameState(state);
   }, [state]);
+
+  useEffect(() => {
+    pendingCloudStateRef.current = state;
+
+    if (!backendConfigured || !cloudReadyRef.current || !cloudPlayerId) {
+      return;
+    }
+
+    if (cloudSaveTimerRef.current !== null) {
+      return;
+    }
+
+    cloudSaveTimerRef.current = window.setTimeout(() => {
+      cloudSaveTimerRef.current = null;
+      const stateToSave = pendingCloudStateRef.current;
+      const serialized = JSON.stringify(stateToSave);
+      if (serialized === lastCloudSavedJsonRef.current) {
+        return;
+      }
+
+      void saveCloudSave(cloudPlayerId, stateToSave)
+        .then((saved) => {
+          lastCloudSavedJsonRef.current = serialized;
+          setLastCloudSyncAt(saved?.updatedAt ?? new Date().toISOString());
+          setBackendConnected(true);
+        })
+        .catch((error) => {
+          console.warn("[cloud-save] Auto save failed; continuing with localStorage.", error);
+          setBackendConnected(false);
+        });
+    }, 2000);
+  }, [backendConfigured, cloudPlayerId, state]);
+
+  useEffect(() => {
+    return () => {
+      if (cloudSaveTimerRef.current !== null) {
+        window.clearTimeout(cloudSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -1347,17 +1549,20 @@ export default function App() {
               <div className="section-heading">
                 <div>
                   <p className="eyebrow">Dev panel</p>
-                  <h2>Backend prep</h2>
+                  <h2>Backend sync</h2>
                 </div>
-                <span>Local</span>
+                <span>{backendConnected ? "Cloud" : "Local"}</span>
               </div>
               {!telegramViewport.telegramSdkLoaded ? (
-                <div className="debug-warning">Telegram SDK not loaded — fullscreen API unavailable.</div>
+                <div className="debug-warning">Telegram SDK not loaded - fullscreen API unavailable.</div>
               ) : null}
               <div className="debug-grid">
                 <StatPill label="Origin" value={currentOrigin || "Unknown"} />
                 <StatPill label="Mode" value={environmentMode} />
-                <StatPill label="Player id" value={player.id} />
+                <StatPill label="Backend" value={backendConnected ? "Yes" : backendConfigured ? "No" : "Off"} />
+                <StatPill label="Player id" value={currentPlayerId} />
+                <StatPill label="Cloud sync" value={lastCloudSyncLabel} />
+                <StatPill label="Save source" value={saveSource} />
                 <StatPill label="Telegram" value={isTelegramEnvironment() ? "Yes" : "No"} />
                 <StatPill label="SDK loaded" value={telegramViewport.telegramSdkLoaded ? "Yes" : "No"} />
                 <StatPill label="TG object" value={telegramViewport.telegramObjectExists ? "Yes" : "No"} />
@@ -1392,6 +1597,20 @@ export default function App() {
                 <StatPill label="Reset ver" value={DEV_SAVE_RESET_VERSION} />
                 <StatPill label="Stored ver" value={storedDevResetVersion || "None"} />
               </div>
+              <button
+                className="mini-button"
+                disabled={!backendConfigured || !cloudPlayerId || cloudSyncBusy}
+                onClick={forceCloudSave}
+              >
+                {cloudSyncBusy ? "Syncing..." : "Force Cloud Save"}
+              </button>
+              <button
+                className="mini-button"
+                disabled={!backendConfigured || !cloudPlayerId || cloudSyncBusy}
+                onClick={forceCloudLoad}
+              >
+                {cloudSyncBusy ? "Syncing..." : "Force Cloud Load"}
+              </button>
               <button
                 className="mini-button"
                 onClick={() => {
