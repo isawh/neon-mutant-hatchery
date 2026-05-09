@@ -847,6 +847,74 @@ p {
   padding: 12px;
 }
 
+.hatch-control-panel {
+  gap: 12px;
+}
+
+.hatch-title p:not(.eyebrow) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.hatch-cta {
+  min-height: 60px;
+  font-size: 0.98rem;
+  box-shadow:
+    0 0 32px rgba(29, 247, 255, 0.34),
+    0 12px 28px rgba(0, 0, 0, 0.32);
+}
+
+.compact-section,
+.hatch-details {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(135, 246, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(7, 13, 27, 0.68);
+}
+
+.compact-section {
+  padding: 10px;
+}
+
+.hatch-details {
+  padding: 9px;
+}
+
+.compact-section > summary,
+.hatch-details > summary {
+  list-style: none;
+  cursor: pointer;
+  color: #f7fbff;
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.compact-section > summary::-webkit-details-marker,
+.hatch-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.compact-section > summary::after,
+.hatch-details > summary::after {
+  content: "+";
+  float: right;
+  color: var(--green);
+}
+
+.compact-section[open] > summary::after,
+.hatch-details[open] > summary::after {
+  content: "-";
+}
+
+.hatch-details[open],
+.compact-section[open] {
+  background: rgba(7, 13, 27, 0.86);
+}
+
 .hatch-meta-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1330,6 +1398,52 @@ p {
   color: var(--green);
   font-size: 0.74rem;
   text-transform: uppercase;
+}
+
+.daily-profile-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border: 1px solid rgba(100, 255, 115, 0.18);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(100, 255, 115, 0.11), transparent 42%),
+    rgba(7, 13, 27, 0.58);
+}
+
+.daily-profile-panel .retention-strip,
+.daily-profile-panel .login-calendar {
+  padding-inline: 10px;
+}
+
+.daily-profile-panel .login-calendar {
+  padding-top: 0;
+}
+
+.account-status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid rgba(135, 246, 255, 0.14);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(7, 13, 27, 0.58);
+}
+
+.account-status-line span:not(:last-child)::after {
+  content: "/";
+  margin-left: 6px;
+  color: rgba(135, 246, 255, 0.32);
+}
+
+.settings-section .stats-grid,
+.achievements-accordion .achievement-panel {
+  margin-top: 10px;
 }
 
 .collection-progress {
@@ -3470,6 +3584,139 @@ p {
   50% {
     transform: scale(1.06);
     filter: brightness(1.25);
+  }
+}
+
+@media (max-width: 639px) {
+  .top-panel {
+    min-height: 44px;
+    padding-top: max(8px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px));
+  }
+
+  .top-panel h1 {
+    font-size: 1.24rem;
+  }
+
+  .resource-bar {
+    gap: 6px;
+  }
+
+  .resource-bar .stat-pill {
+    padding: 7px 8px;
+  }
+
+  .resource-bar .stat-pill span {
+    font-size: 0.56rem;
+  }
+
+  .resource-bar .stat-pill strong {
+    font-size: 0.84rem;
+  }
+
+  .screen {
+    padding-inline: 10px;
+  }
+
+  .hatch-screen {
+    gap: 8px;
+  }
+
+  .event-banner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 999px;
+  }
+
+  .event-banner .eyebrow,
+  .event-banner p {
+    display: none;
+  }
+
+  .event-banner h3 {
+    overflow: hidden;
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .event-banner strong {
+    font-size: 0.74rem;
+  }
+
+  .incubator {
+    height: clamp(224px, 35dvh, 330px);
+    padding: 14px;
+  }
+
+  .capsule {
+    height: clamp(168px, 27dvh, 260px);
+  }
+
+  .egg-core {
+    height: clamp(86px, 14dvh, 140px);
+  }
+
+  .panel {
+    padding: 10px;
+  }
+
+  .hatch-title p:not(.eyebrow) {
+    display: none;
+  }
+
+  .hatch-cta {
+    min-height: 64px;
+    font-size: 1rem;
+  }
+
+  .streak-meter {
+    padding: 8px;
+  }
+
+  .streak-meter p {
+    display: none;
+  }
+
+  .return-hooks {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .session-reward {
+    grid-template-columns: minmax(0, 1fr) 72px auto;
+  }
+
+  .session-reward em {
+    display: none;
+  }
+
+  .daily-profile-panel .calendar-day strong {
+    display: none;
+  }
+
+  .daily-profile-panel .calendar-day {
+    min-height: 34px;
+  }
+
+  .profile-screen {
+    gap: 10px;
+  }
+
+  .referral-panel,
+  .mission-panel,
+  .session-panel,
+  .achievement-panel {
+    padding: 10px;
+  }
+
+  .milestone-list {
+    max-height: 190px;
+    overflow: auto;
+  }
+
+  .bottom-nav button {
+    min-height: 50px;
   }
 }
 

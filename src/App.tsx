@@ -506,6 +506,12 @@ export default function App() {
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
   const backendConfigured = isBackendConfigured();
+  const debugEnabled = useMemo(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return new URLSearchParams(window.location.search).get("debug") === "1";
+  }, []);
   const rawApiUrl = getRawApiUrl();
   const resolvedApiBaseUrl = getApiBaseUrl();
   const currentPlayerId = cloudPlayerId ?? player.id;
@@ -1447,23 +1453,25 @@ export default function App() {
             <p className="eyebrow">Neon Mutant Hatchery</p>
             <h1>Capsule Lab</h1>
           </div>
-          <button
-            className="icon-button"
-            aria-label="Reset game"
-            onClick={() => {
-              setState(ensureProgressionState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState())))));
-              setOnboardingStep(0);
-              setLastHatched(null);
-              setRevealRarity(null);
-              setScreenFlash(null);
-              setRecentRareHatch(null);
-              setBreedSelection([]);
-              setShowOfflineModal(false);
-              haptic.impact("heavy");
-            }}
-          >
-            <span className="reset-icon" />
-          </button>
+          {debugEnabled ? (
+            <button
+              className="icon-button"
+              aria-label="Reset game"
+              onClick={() => {
+                setState(ensureProgressionState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState())))));
+                setOnboardingStep(0);
+                setLastHatched(null);
+                setRevealRarity(null);
+                setScreenFlash(null);
+                setRecentRareHatch(null);
+                setBreedSelection([]);
+                setShowOfflineModal(false);
+                haptic.impact("heavy");
+              }}
+            >
+              <span className="reset-icon" />
+            </button>
+          ) : null}
         </section>
 
         <section className="resource-bar" aria-label="Resources">
@@ -1478,33 +1486,6 @@ export default function App() {
             <span>Saved data was unavailable, so a fresh playable session is running.</span>
           </section>
         ) : null}
-
-        <section className="retention-strip" aria-label="Daily rewards">
-          <button
-            className={`reward-chip ${
-              currentTutorialTask?.id === "claim_daily" && !currentTutorialTask.completed ? "tutorial-glow" : ""
-            }`}
-            disabled={!canClaimDaily}
-            onClick={handleDailyReward}
-          >
-            <span>Daily</span>
-            <strong>{canClaimDaily ? `Day ${dailyLoginReward.day}` : `Streak ${state.loginStreak}`}</strong>
-          </button>
-          <button className="reward-chip" disabled={freeCapsuleRemaining > 0} onClick={handleFreeCapsule}>
-            <span>Free capsule</span>
-            <strong>{formatDuration(freeCapsuleRemaining)}</strong>
-          </button>
-          <div className="reward-chip passive-chip">
-            <span>Hatch streak</span>
-            <strong>{state.hatchStreak}x · +{hatchLuckBonus.toFixed(1)}%</strong>
-          </div>
-        </section>
-
-        <DailyLoginCalendar
-          streak={state.loginStreak}
-          claimedToday={!canClaimDaily}
-          activeDay={dailyLoginReward.day}
-        />
 
         <TutorialPanel
           task={currentTutorialTask}
@@ -1542,18 +1523,6 @@ export default function App() {
                 <strong>{formatDuration(activeEventRemaining)}</strong>
               </div>
             ) : null}
-            <ReturnHooksPanel
-              dailyReady={canClaimDaily}
-              freeCapsuleRemaining={freeCapsuleRemaining}
-              eventTitle={state.activeEvent?.title ?? "Next event"}
-              eventRemaining={activeEventRemaining}
-              hatchStreak={state.hatchStreak}
-              hatchStreakRemaining={hatchStreakRemaining}
-              sessionRewardTitle={nextSessionReward?.title ?? "Session cleared"}
-              sessionRewardRemaining={
-                nextSessionReward ? Math.max(0, nextSessionReward.requiredMs - nextSessionReward.elapsedMs) : 0
-              }
-            />
             <div className="hatch-layout">
               <div className="hatch-chamber-column">
                 <div
@@ -1595,8 +1564,8 @@ export default function App() {
                 </div>
               </div>
               <div className="hatch-side-column">
-                <div className="panel">
-                  <div>
+                <div className="panel hatch-control-panel">
+                  <div className="hatch-title">
                     <p className="eyebrow">Incubation bay</p>
                     <h2>{lastHatched ? lastHatched.name : "Unstable capsule ready"}</h2>
                     <p>
@@ -1610,36 +1579,8 @@ export default function App() {
                       Your starter kit is loaded. Hatch once to unlock your first idle coin generator.
                     </div>
                   ) : null}
-                  <div className="hatch-meta-grid">
-                    <StatPill label="Open cost" value={`${formatNumber(hatchCost)} coins`} />
-                    <StatPill
-                      label="Next open"
-                      value={state.premiumCapsules > 0 ? "Premium" : `${state.hatchStreak} streak`}
-                    />
-                  </div>
-                  <div className="streak-meter">
-                    <div>
-                      <span>Streak luck</span>
-                      <strong>+{hatchLuckBonus.toFixed(1)}%</strong>
-                    </div>
-                    <div className="completion-bar">
-                      <i style={{ width: `${Math.min(100, (hatchLuckBonus / 12) * 100)}%` }} />
-                    </div>
-                    <p>{hatchStreakRemaining > 0 ? `${formatDuration(hatchStreakRemaining)} before reset` : "Hatch to start a streak"}</p>
-                  </div>
-                  <div className="odds-panel" aria-label="Hatch rarity chances">
-                    {getRarityChances(state, state.premiumCapsules > 0).map(({ rarity, chance }) => (
-                      <div key={rarity} className={`odds-row ${RARITY_CONFIG[rarity].className}`}>
-                        <span>{rarity}</span>
-                        <div>
-                          <i style={{ width: `${chance}%` }} />
-                        </div>
-                        <strong>{chance}%</strong>
-                      </div>
-                    ))}
-                  </div>
                   <button
-                    className={`primary-button ${
+                    className={`primary-button hatch-cta ${
                       currentTutorialTask?.id === "first_hatch" && !currentTutorialTask.completed ? "tutorial-glow" : ""
                     }`}
                     disabled={
@@ -1653,32 +1594,78 @@ export default function App() {
                         ? "Open premium capsule"
                         : `Hatch - ${formatNumber(hatchCost)}`}
                   </button>
-                </div>
-                <div className="income-strip">
-                  <span>Total idle income</span>
-                  <strong>
-                    {formatNumber(boostedIncome)} coins/min{boostedIncome > totalIncome ? " boosted" : ""}
-                  </strong>
-                </div>
-                {recentRareHatch ? (
-                  <div className={`rare-flex-panel ${RARITY_CONFIG[recentRareHatch.rarity].className}`}>
-                    <CreatureVisual creature={recentRareHatch} />
+                  <div className="streak-meter">
                     <div>
-                      <p className="eyebrow">Recent rare hatch</p>
-                      <h3>
-                        {recentRareHatch.rarity} {recentRareHatch.name}
-                      </h3>
-                      <p>Power {formatNumber(getPowerScore(recentRareHatch))} pull ready to flex.</p>
+                      <span>Streak luck</span>
+                      <strong>+{hatchLuckBonus.toFixed(1)}%</strong>
                     </div>
-                    <button className="mini-button" onClick={handleShareRareHatch}>
-                      Share
-                    </button>
+                    <div className="completion-bar">
+                      <i style={{ width: `${Math.min(100, (hatchLuckBonus / 12) * 100)}%` }} />
+                    </div>
+                    <p>{hatchStreakRemaining > 0 ? `${formatDuration(hatchStreakRemaining)} before reset` : "Hatch to start a streak"}</p>
                   </div>
-                ) : null}
+                  <details className="hatch-details">
+                    <summary>Details</summary>
+                    <div className="hatch-meta-grid">
+                      <StatPill label="Open cost" value={`${formatNumber(hatchCost)} coins`} />
+                      <StatPill
+                        label="Next open"
+                        value={state.premiumCapsules > 0 ? "Premium" : `${state.hatchStreak} streak`}
+                      />
+                    </div>
+                    <div className="odds-panel" aria-label="Hatch rarity chances">
+                      {getRarityChances(state, state.premiumCapsules > 0).map(({ rarity, chance }) => (
+                        <div key={rarity} className={`odds-row ${RARITY_CONFIG[rarity].className}`}>
+                          <span>{rarity}</span>
+                          <div>
+                            <i style={{ width: `${chance}%` }} />
+                          </div>
+                          <strong>{chance}%</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <ReturnHooksPanel
+                      dailyReady={canClaimDaily}
+                      freeCapsuleRemaining={freeCapsuleRemaining}
+                      eventTitle={state.activeEvent?.title ?? "Next event"}
+                      eventRemaining={activeEventRemaining}
+                      hatchStreak={state.hatchStreak}
+                      hatchStreakRemaining={hatchStreakRemaining}
+                      sessionRewardTitle={nextSessionReward?.title ?? "Session cleared"}
+                      sessionRewardRemaining={
+                        nextSessionReward ? Math.max(0, nextSessionReward.requiredMs - nextSessionReward.elapsedMs) : 0
+                      }
+                    />
+                    <div className="income-strip">
+                      <span>Total idle income</span>
+                      <strong>
+                        {formatNumber(boostedIncome)} coins/min{boostedIncome > totalIncome ? " boosted" : ""}
+                      </strong>
+                    </div>
+                    {recentRareHatch ? (
+                      <div className={`rare-flex-panel ${RARITY_CONFIG[recentRareHatch.rarity].className}`}>
+                        <CreatureVisual creature={recentRareHatch} />
+                        <div>
+                          <p className="eyebrow">Recent rare hatch</p>
+                          <h3>
+                            {recentRareHatch.rarity} {recentRareHatch.name}
+                          </h3>
+                          <p>Power {formatNumber(getPowerScore(recentRareHatch))} pull ready to flex.</p>
+                        </div>
+                        <button className="mini-button" onClick={handleShareRareHatch}>
+                          Share
+                        </button>
+                      </div>
+                    ) : null}
+                  </details>
+                </div>
               </div>
             </div>
-            <SessionRewardsPanel rewards={sessionRewards} onClaim={handleSessionReward} />
-            <MissionPanel missions={state.dailyMissions} onClaim={handleMissionClaim} />
+            <details className="compact-section hatch-rewards">
+              <summary>Rewards & missions</summary>
+              <SessionRewardsPanel rewards={sessionRewards} onClaim={handleSessionReward} />
+              <MissionPanel missions={state.dailyMissions} onClaim={handleMissionClaim} />
+            </details>
           </div>
         ) : null}
 
@@ -1910,30 +1897,6 @@ export default function App() {
 
         {activeTab === "profile" ? (
           <div className="profile-screen">
-            <div className="profile-hero">
-              {strongestCreature ? <CreatureVisual creature={strongestCreature} large /> : <div className="empty-orb" />}
-              <div>
-                <p className="eyebrow">Lab profile</p>
-                <h2>{strongestCreature ? "Prime mutant active" : "New researcher"}</h2>
-                <p>
-                  {strongestCreature
-                    ? `${strongestCreature.name} leads your hatchery with ${formatNumber(
-                        getCreatureIncomePerMinute(strongestCreature),
-                      )} coins/min.`
-                    : "Start hatching to unlock profile stats."}
-                </p>
-              </div>
-            </div>
-            <div className="stats-grid">
-              <StatPill label="Creatures" value={formatNumber(state.creatures.length)} />
-              <StatPill label="Income/min" value={formatNumber(totalIncome)} />
-              <StatPill label="Best rarity" value={strongestCreature?.rarity ?? "None"} />
-              <StatPill
-                label="Highest gen"
-                value={formatNumber(Math.max(0, ...state.creatures.map((item) => item.generation)))}
-              />
-            </div>
-            <AchievementPanel achievements={visibleAchievements} readyCount={unclaimedAchievementCount} onClaim={handleAchievementClaim} />
             <div className="referral-panel">
               <div className="section-heading">
                 <div>
@@ -1976,6 +1939,55 @@ export default function App() {
                 <div className="debug-warning">Backend referral data unavailable. Invite progress is paused.</div>
               ) : null}
             </div>
+            <section className="daily-profile-panel">
+              <section className="retention-strip" aria-label="Daily rewards">
+                <button
+                  className={`reward-chip ${
+                    currentTutorialTask?.id === "claim_daily" && !currentTutorialTask.completed ? "tutorial-glow" : ""
+                  }`}
+                  disabled={!canClaimDaily}
+                  onClick={handleDailyReward}
+                >
+                  <span>Daily</span>
+                  <strong>{canClaimDaily ? `Day ${dailyLoginReward.day}` : `Streak ${state.loginStreak}`}</strong>
+                </button>
+                <button className="reward-chip" disabled={freeCapsuleRemaining > 0} onClick={handleFreeCapsule}>
+                  <span>Free capsule</span>
+                  <strong>{formatDuration(freeCapsuleRemaining)}</strong>
+                </button>
+                <div className="reward-chip passive-chip">
+                  <span>Hatch luck</span>
+                  <strong>{state.hatchStreak}x +{hatchLuckBonus.toFixed(1)}%</strong>
+                </div>
+              </section>
+              <DailyLoginCalendar
+                streak={state.loginStreak}
+                claimedToday={!canClaimDaily}
+                activeDay={dailyLoginReward.day}
+              />
+            </section>
+            <div className="account-status-line">
+              <span>{backendConnected ? "Cloud save active" : "Local save active"}</span>
+              <span>{backendConfigured ? backendHealthStatus : "backend off"}</span>
+              <span>{paymentsMode}</span>
+            </div>
+            <details className="compact-section settings-section">
+              <summary>Settings</summary>
+              <div className="stats-grid">
+                <StatPill label="Creatures" value={formatNumber(state.creatures.length)} />
+                <StatPill label="Income/min" value={formatNumber(totalIncome)} />
+                <StatPill label="Best rarity" value={strongestCreature?.rarity ?? "None"} />
+                <StatPill
+                  label="Highest gen"
+                  value={formatNumber(Math.max(0, ...state.creatures.map((item) => item.generation)))}
+                />
+              </div>
+            </details>
+            <details className="compact-section achievements-accordion">
+              <summary>Achievements {unclaimedAchievementCount ? `(${unclaimedAchievementCount} ready)` : ""}</summary>
+              <AchievementPanel achievements={visibleAchievements} readyCount={unclaimedAchievementCount} onClaim={handleAchievementClaim} />
+            </details>
+            {debugEnabled ? (
             <div className="debug-panel">
               <div className="section-heading">
                 <div>
@@ -2112,6 +2124,7 @@ export default function App() {
                 Reset onboarding
               </button>
             </div>
+            ) : null}
           </div>
         ) : null}
       </section>
@@ -2456,7 +2469,7 @@ function ReturnHooksPanel({
     { label: "Daily reward", value: dailyReady ? "Ready" : "Claimed" },
     { label: "Free capsule", value: formatDuration(freeCapsuleRemaining) },
     { label: eventTitle, value: eventRemaining > 0 ? formatDuration(eventRemaining) : "Cooling" },
-    { label: "Hatch streak", value: hatchStreak > 0 ? `${hatchStreak}x · ${formatDuration(hatchStreakRemaining)}` : "Inactive" },
+    { label: "Hatch streak", value: hatchStreak > 0 ? `${hatchStreak}x / ${formatDuration(hatchStreakRemaining)}` : "Inactive" },
     { label: sessionRewardTitle, value: sessionRewardRemaining > 0 ? formatDuration(sessionRewardRemaining) : "Ready" },
   ];
 
