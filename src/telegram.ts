@@ -256,6 +256,8 @@ export const syncTelegramViewportCss = () => {
   documentRoot.classList.toggle("tg-fullscreen", Boolean(webApp?.isFullscreen));
   documentRoot.classList.toggle("tg-expanded", Boolean(webApp?.isExpanded));
   documentRoot.classList.toggle("tg-mobile", webApp ? isMobileTelegramPlatform(webApp.platform) : false);
+  documentRoot.classList.toggle("is-telegram", Boolean(webApp));
+  documentRoot.classList.toggle("is-telegram-mobile", Boolean(webApp) && window.innerWidth <= 640);
 
   logViewportSync(pendingViewportReason, "applied", {
     viewportHeight: snapshot.viewportHeight,

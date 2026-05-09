@@ -131,6 +131,15 @@ button:not(:disabled):active {
   z-index: 1;
 }
 
+html.is-telegram-mobile .app-content {
+  padding-top: 72px !important;
+}
+
+html.is-telegram-mobile .app-header,
+html.is-telegram-mobile .top-panel {
+  margin-top: 0;
+}
+
 .app-shell.secret-distort {
   animation: secretUiDistort 2.4s ease-in-out 2;
 }
