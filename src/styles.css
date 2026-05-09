@@ -1932,16 +1932,17 @@ p {
 }
 
 .body-blob .creature-body { border-radius: 58% 42% 48% 52% / 46% 56% 44% 54%; }
-.body-beetle .creature-body { inset: 18% 17% 17%; border-radius: 48% 52% 38% 62% / 42% 42% 58% 58%; }
+.body-node .creature-body { inset: 18% 17% 17%; border-radius: 48% 52% 38% 62% / 42% 42% 58% 58%; }
 .body-slug .creature-body { inset: 30% 10% 18%; border-radius: 68% 32% 56% 44% / 58% 48% 52% 42%; }
-.body-mantis .creature-body { inset: 20% 20% 18%; border-radius: 44% 56% 40% 60% / 35% 52% 48% 65%; transform: skewX(-5deg); }
-.body-drake .creature-body { inset: 16% 15% 20%; border-radius: 64% 36% 42% 58% / 48% 62% 38% 52%; }
-.body-crab .creature-body { inset: 28% 9% 20%; border-radius: 38% 62% 46% 54% / 44% 44% 56% 56%; }
-.body-manta .creature-body { inset: 26% 8% 22%; border-radius: 72% 28% 70% 30% / 44% 44% 56% 56%; }
-.body-spider .creature-body { inset: 22% 20% 18%; border-radius: 50%; }
-.body-sprout .creature-body { inset: 20% 18% 18%; border-radius: 50% 50% 44% 44% / 64% 64% 36% 36%; }
+.body-helix .creature-body { inset: 20% 20% 18%; border-radius: 44% 56% 40% 60% / 35% 52% 48% 65%; transform: skewX(-5deg); }
+.body-vector .creature-body { inset: 16% 15% 20%; border-radius: 64% 36% 42% 58% / 48% 62% 38% 52%; }
+.body-asym .creature-body { inset: 28% 9% 20%; border-radius: 38% 62% 46% 54% / 44% 44% 56% 56%; }
+.body-disc .creature-body { inset: 26% 8% 22%; border-radius: 72% 28% 70% 30% / 44% 44% 56% 56%; }
+.body-tendril .creature-body { inset: 22% 20% 18%; border-radius: 50%; }
+.body-poly .creature-body { inset: 20% 18% 18%; border-radius: 50% 50% 44% 44% / 64% 64% 36% 36%; }
+.body-bud .creature-body { inset: 18% 20% 18%; border-radius: 52% 48% 44% 56% / 62% 58% 42% 38%; }
 .body-orb .creature-body { inset: 20%; border-radius: 50%; }
-.body-wyrm .creature-body { inset: 14% 22% 12%; border-radius: 999px; }
+.body-spindle .creature-body { inset: 14% 22% 12%; border-radius: 999px; }
 .body-crystal .creature-body { inset: 18% 18% 18%; border-radius: 18% 44% 22% 42%; clip-path: polygon(50% 0, 92% 28%, 78% 92%, 22% 92%, 8% 28%); }
 
 .creature-eye {
@@ -2053,7 +2054,7 @@ p {
 .horns-halo .creature-horn { top: 9%; width: 24%; height: 8%; border: 2px solid var(--accent); border-radius: 50%; background: transparent; clip-path: none; }
 .horns-spikes .creature-horn { width: 18%; height: 22%; clip-path: polygon(50% 0, 62% 62%, 100% 100%, 50% 80%, 0 100%, 38% 62%); }
 .horns-fin .creature-horn { width: 12%; height: 32%; clip-path: polygon(0 0, 100% 50%, 0 100%); }
-.horns-crown .creature-horn { top: 10%; width: 20%; height: 20%; clip-path: polygon(0 100%, 18% 25%, 42% 82%, 50% 0, 58% 82%, 82% 25%, 100% 100%); }
+.horns-crystal .creature-horn { top: 10%; width: 20%; height: 20%; clip-path: polygon(0 100%, 18% 25%, 42% 82%, 50% 0, 58% 82%, 82% 25%, 100% 100%); }
 
 .creature-horn-left {
   left: 27%;

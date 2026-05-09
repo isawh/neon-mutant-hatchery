@@ -268,7 +268,7 @@ function CreatureVisual({
   const visualDna = creature.visualDna ?? {
     bodyShape: "blob",
     eyeType: "round",
-    hornType: "short",
+    hornType: "antenna",
     auraStyle: "soft",
     patternStyle: "spots",
     mutationEffect: "spark",
