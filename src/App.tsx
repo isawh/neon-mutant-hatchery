@@ -1588,11 +1588,26 @@ export default function App() {
                     }
                     onClick={handleHatch}
                   >
-                    {isHatching
-                      ? "Stabilizing..."
-                      : state.premiumCapsules > 0
-                        ? "Open premium capsule"
-                        : `Hatch - ${formatNumber(hatchCost)}`}
+                    <span className="hatch-cta-main">
+                      {isHatching
+                        ? "Stabilizing..."
+                        : state.premiumCapsules > 0
+                          ? "Open premium"
+                          : state.eggs <= 0
+                            ? "No capsules"
+                            : state.coins < hatchCost
+                              ? "Need coins"
+                              : "Hatch capsule"}
+                    </span>
+                    <span className="hatch-cta-sub">
+                      {isHatching
+                        ? "Neon pressure rising"
+                        : state.premiumCapsules > 0
+                          ? `${formatNumber(state.premiumCapsules)} premium ready`
+                          : state.eggs <= 0
+                            ? "Claim a free capsule"
+                            : `${formatNumber(hatchCost)} coins / ${formatNumber(state.eggs)} ready`}
+                    </span>
                   </button>
                   <div className="streak-meter">
                     <div>
