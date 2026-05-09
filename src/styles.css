@@ -131,6 +131,10 @@ button:not(:disabled):active {
   z-index: 1;
 }
 
+.app-shell.reveal-lock .app-content {
+  animation: revealCameraPulse 760ms ease-in-out infinite alternate;
+}
+
 html.is-telegram-mobile .app-content {
   padding-top: 104px !important;
 }
@@ -298,7 +302,7 @@ p {
 
 .resource-bar {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   padding: 0 12px;
 }
@@ -596,6 +600,10 @@ p {
   animation: hatchShake 520ms ease-in-out infinite;
 }
 
+.incubator-common.hatching {
+  animation: hatchShake 520ms ease-in-out infinite, commonPopGlow 680ms ease-out infinite;
+}
+
 .incubator-rare,
 .incubator-epic,
 .incubator-legendary,
@@ -612,6 +620,26 @@ p {
 .incubator-mythic,
 .incubator-secret {
   animation: revealRoomPulse 2.2s ease-in-out infinite;
+}
+
+.incubator-rare.hatching {
+  animation: hatchShake 440ms ease-in-out infinite, rarePulseParticles 900ms ease-in-out infinite;
+}
+
+.incubator-epic.hatching {
+  animation: hatchShake 380ms ease-in-out infinite, epicChamberFlash 980ms ease-in-out infinite;
+}
+
+.incubator-legendary.hatching {
+  animation: hatchShake 320ms ease-in-out infinite, legendaryRadialBurst 1.05s ease-in-out infinite;
+}
+
+.incubator-mythic.hatching {
+  animation: hatchShake 300ms ease-in-out infinite, mythicAuraStorm 1.25s ease-in-out infinite;
+}
+
+.incubator-secret.hatching {
+  animation: secretUiDistort 520ms steps(2, end) infinite, secretBrokenFlicker 860ms steps(3, end) infinite;
 }
 
 .incubator-secret {
@@ -873,12 +901,18 @@ p {
   animation: rareScreenFlash 620ms ease-out both;
 }
 
+.flash-epic {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.94), rgba(255, 79, 216, 0.28) 34%, transparent 70%);
+}
+
 .flash-legendary {
   background: radial-gradient(circle at center, rgba(255, 255, 255, 0.98), rgba(247, 240, 90, 0.36) 34%, transparent 72%);
+  animation: legendaryScreenPulse 760ms ease-out both;
 }
 
 .flash-mythic {
   background: radial-gradient(circle at center, rgba(255, 255, 255, 0.98), rgba(100, 255, 115, 0.36) 34%, transparent 72%);
+  animation: mythicScreenStorm 900ms ease-out both;
 }
 
 .flash-secret {
@@ -886,6 +920,64 @@ p {
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 2px, transparent 2px 9px),
     radial-gradient(circle at center, rgba(255, 255, 255, 1), rgba(255, 79, 216, 0.42) 32%, rgba(29, 247, 255, 0.26) 54%, transparent 76%);
   animation: secretScreenFlash 980ms steps(3, end) both;
+}
+
+.pull-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #f7fbff;
+  text-align: center;
+  pointer-events: auto;
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--rarity, var(--cyan)), transparent 76%), transparent 36%),
+    rgba(1, 3, 9, 0.72);
+  backdrop-filter: blur(3px) saturate(1.25);
+  animation: rareMomentDim 420ms ease-out both;
+}
+
+.pull-reveal-overlay span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pull-reveal-overlay strong {
+  font-size: clamp(2.5rem, 14vw, 5.7rem);
+  font-weight: 1000;
+  line-height: 0.88;
+  color: var(--rarity, #f7fbff);
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--rarity, var(--cyan)), transparent 24%),
+    0 0 54px color-mix(in srgb, var(--rarity, var(--cyan)), transparent 40%);
+  animation: rareMomentTitle 900ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+}
+
+.pull-reveal-overlay.reveal-legendary {
+  --rarity: #f7f05a;
+}
+
+.pull-reveal-overlay.reveal-mythic {
+  --rarity: #64ff73;
+}
+
+.pull-reveal-overlay.reveal-secret {
+  --rarity: #ffffff;
+}
+
+.pull-reveal-overlay.reveal-secret {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 11px),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.24), transparent 38%),
+    rgba(1, 3, 9, 0.82);
+  animation: rareMomentDim 420ms ease-out both, secretUiDistort 520ms steps(2, end) infinite;
 }
 
 .panel,
@@ -911,6 +1003,49 @@ p {
   background:
     linear-gradient(180deg, rgba(29, 247, 255, 0.08), rgba(5, 9, 21, 0.84)),
     rgba(8, 14, 30, 0.88);
+}
+
+.hatch-result-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--rarity, var(--cyan)), transparent 28%);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 14% 12%, color-mix(in srgb, var(--rarity, var(--cyan)), transparent 76%), transparent 36%),
+    linear-gradient(145deg, color-mix(in srgb, var(--rarity, var(--cyan)), transparent 88%), rgba(8, 14, 30, 0.96));
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.22),
+    0 0 28px color-mix(in srgb, var(--rarity, var(--cyan)), transparent 84%);
+  animation: hatchResultIn 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hatch-result-card h3 {
+  margin: 1px 0 7px;
+  overflow: hidden;
+  color: #f7fbff;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.result-badges span {
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--rarity, var(--cyan)), transparent 34%);
+  border-radius: 999px;
+  color: #f7fbff;
+  font-size: 0.62rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--rarity, var(--cyan)), transparent 88%);
 }
 
 .hatch-title p:not(.eyebrow) {
@@ -1559,6 +1694,36 @@ p {
 .settings-section .stats-grid,
 .achievements-accordion .achievement-panel {
   margin-top: 10px;
+}
+
+.settings-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(135, 246, 255, 0.16);
+  border-radius: 8px;
+  color: #f7fbff;
+  background:
+    linear-gradient(135deg, rgba(29, 247, 255, 0.08), rgba(255, 79, 216, 0.05)),
+    rgba(7, 13, 27, 0.78);
+}
+
+.settings-toggle span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.settings-toggle strong {
+  color: var(--green);
+  font-size: 0.82rem;
+  text-transform: uppercase;
 }
 
 .collection-progress {
@@ -2247,6 +2412,24 @@ p {
     linear-gradient(135deg, var(--body), var(--accent), var(--glow), var(--body));
   background-size: 220% 220%;
   animation: mythicGradient 2.2s linear infinite;
+}
+
+.creature-mythic .creature-body::after {
+  left: 39%;
+  right: auto;
+  bottom: 28%;
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #ffffff 0 18%, var(--glow) 19% 46%, transparent 48%),
+    var(--accent);
+  filter: blur(1px);
+  opacity: 0.92;
+  box-shadow:
+    0 0 16px var(--glow),
+    0 0 32px color-mix(in srgb, var(--accent), transparent 18%);
+  animation: mythicCorePulse 1.2s ease-in-out infinite;
 }
 
 .creature-mythic .creature-horn,
@@ -3363,6 +3546,97 @@ p {
   }
 }
 
+@keyframes commonPopGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 22px rgba(29, 247, 255, 0.12),
+      inset 0 0 48px rgba(29, 247, 255, 0.12);
+  }
+
+  50% {
+    box-shadow:
+      0 0 30px rgba(29, 247, 255, 0.22),
+      inset 0 0 62px rgba(29, 247, 255, 0.18);
+  }
+}
+
+@keyframes rarePulseParticles {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.22) saturate(1.18);
+    box-shadow:
+      0 0 42px rgba(29, 247, 255, 0.28),
+      inset 0 0 74px rgba(29, 247, 255, 0.24);
+  }
+}
+
+@keyframes epicChamberFlash {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  45% {
+    filter: brightness(1.34) saturate(1.28);
+    box-shadow:
+      0 0 54px rgba(255, 79, 216, 0.3),
+      inset 0 0 86px rgba(255, 79, 216, 0.22);
+  }
+}
+
+@keyframes legendaryRadialBurst {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+
+  50% {
+    filter: brightness(1.38) saturate(1.45);
+    box-shadow:
+      0 0 62px rgba(247, 240, 90, 0.35),
+      0 0 110px rgba(255, 79, 216, 0.16),
+      inset 0 0 94px rgba(247, 240, 90, 0.24);
+  }
+}
+
+@keyframes mythicAuraStorm {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) brightness(1);
+  }
+
+  50% {
+    filter: hue-rotate(110deg) brightness(1.32) saturate(1.6);
+    box-shadow:
+      0 0 74px rgba(100, 255, 115, 0.34),
+      0 0 130px rgba(29, 247, 255, 0.18),
+      inset 0 0 110px rgba(100, 255, 115, 0.22);
+  }
+}
+
+@keyframes secretBrokenFlicker {
+  0%,
+  100% {
+    opacity: 1;
+    filter: contrast(1) hue-rotate(0deg);
+  }
+
+  38% {
+    opacity: 0.88;
+    filter: contrast(1.3) hue-rotate(42deg);
+  }
+
+  64% {
+    opacity: 1;
+    filter: contrast(1.1) hue-rotate(-28deg);
+  }
+}
+
 @keyframes capsuleWobble {
   0%,
   100% {
@@ -3469,6 +3743,41 @@ p {
   }
 }
 
+@keyframes legendaryScreenPulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+
+  30% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes mythicScreenStorm {
+  0% {
+    transform: rotate(0deg) scale(0.9);
+    opacity: 0;
+    filter: hue-rotate(0deg);
+  }
+
+  35% {
+    opacity: 0.88;
+  }
+
+  100% {
+    transform: rotate(8deg) scale(1.12);
+    opacity: 0;
+    filter: hue-rotate(150deg);
+  }
+}
+
 @keyframes secretScreenFlash {
   0% {
     opacity: 0;
@@ -3487,6 +3796,63 @@ p {
   100% {
     opacity: 0;
     transform: translateX(0);
+  }
+}
+
+@keyframes rareMomentDim {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rareMomentTitle {
+  from {
+    transform: scale(0.96);
+    filter: brightness(1);
+  }
+
+  to {
+    transform: scale(1.04);
+    filter: brightness(1.34);
+  }
+}
+
+@keyframes revealCameraPulse {
+  from {
+    transform: scale(1);
+    filter: brightness(0.82) saturate(1.05);
+  }
+
+  to {
+    transform: scale(1.015);
+    filter: brightness(0.68) saturate(1.28);
+  }
+}
+
+@keyframes hatchResultIn {
+  from {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes mythicCorePulse {
+  0%,
+  100% {
+    transform: scale(0.82);
+  }
+
+  50% {
+    transform: scale(1.18);
   }
 }
 

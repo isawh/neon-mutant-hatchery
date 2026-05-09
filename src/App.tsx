@@ -48,6 +48,7 @@ import {
   getSessionRewardProgress,
   getTotalIncomePerMinute,
   getUpgradeCost,
+  getUpgradeShardCost,
   hatchEgg,
   resetOnboardingProgress,
   toggleFavoriteCreature,
@@ -98,10 +99,20 @@ import {
   ensureReferralCode,
   syncReferralStats,
 } from "./services/referralService";
+import {
+  isSoundEnabled,
+  playButtonTap,
+  playHatchReveal,
+  playHatchStart,
+  playPurchaseSuccess,
+  playRewardClaim,
+  toggleSound,
+} from "./services/soundService";
 import type {
   AchievementId,
   Creature,
   GameState,
+  HatchResult,
   LimitedOfferId,
   MissionId,
   Rarity,
@@ -179,36 +190,43 @@ const getRevealClass = (rarity: Rarity) => {
 
 const getRevealDelay = (rarity: Rarity) => {
   if (rarity === "Secret") {
-    return 1480;
+    return 3500;
+  }
+  if (rarity === "Mythic") {
+    return 2800;
+  }
+  if (rarity === "Legendary") {
+    return 2000;
+  }
+  if (rarity === "Epic") {
+    return 1300;
   }
   if (rarity === "Common") {
-    return 420;
+    return 600;
   }
   if (rarity === "Rare") {
-    return 720;
+    return 900;
   }
-  return 1080;
+  return 1300;
 };
 
 const hapticForRarity = (rarity: Rarity) => {
   if (rarity === "Common") {
     haptic.impact("light");
   } else if (rarity === "Rare") {
+    haptic.impact("light");
+    window.setTimeout(() => haptic.impact("medium"), 90);
+  } else if (rarity === "Epic") {
     haptic.impact("medium");
-  } else if (rarity === "Secret") {
+  } else if (rarity === "Legendary") {
     haptic.impact("heavy");
-    window.setTimeout(() => haptic.impact("heavy"), 120);
+  } else if (rarity === "Mythic") {
+    haptic.impact("heavy");
+    window.setTimeout(() => haptic.impact("heavy"), 180);
   } else {
     haptic.impact("heavy");
+    [90, 180, 320].forEach((delay) => window.setTimeout(() => haptic.impact("heavy"), delay));
   }
-};
-
-const playSecretSoundPlaceholder = (creature: Creature) => {
-  console.log("[sound-placeholder] secret_hatch", {
-    creatureId: creature.id,
-    name: creature.name,
-    rarity: creature.rarity,
-  });
 };
 
 type SaveSource = "local" | "cloud";
@@ -445,7 +463,7 @@ function CreatureCard({
             onUpgrade();
           }}
         >
-          Upgrade - {formatNumber(getUpgradeCost(creature))}
+          Upgrade - {formatNumber(getUpgradeCost(creature))}c / {formatNumber(getUpgradeShardCost(creature))}s
         </button>
       ) : null}
     </article>
@@ -468,6 +486,7 @@ export default function App() {
   const [state, setState] = useState<GameState>(initialLoad.state);
   const [stateLoadError, setStateLoadError] = useState(initialLoad.error);
   const [lastHatched, setLastHatched] = useState<Creature | null>(null);
+  const [lastHatchResult, setLastHatchResult] = useState<HatchResult | null>(null);
   const [offlineEarned, setOfflineEarned] = useState(0);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [breedSelection, setBreedSelection] = useState<string[]>([]);
@@ -503,6 +522,7 @@ export default function App() {
   const [lastInvoiceLinkExists, setLastInvoiceLinkExists] = useState(false);
   const [backendHealthStatus, setBackendHealthStatus] = useState<BackendHealthStatus>("off");
   const [lastBackendError, setLastBackendError] = useState("");
+  const [soundEnabled, setSoundEnabled] = useState(() => isSoundEnabled());
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
@@ -565,6 +585,9 @@ export default function App() {
   const freeCapsuleRemaining = Math.max(0, state.freeCapsuleReadyAt - now);
   const hatchStreakRemaining = getHatchStreakRemaining(state, now);
   const hatchLuckBonus = getHatchStreakLuckBonus(state, now);
+  const rareRevealActive = Boolean(
+    isHatching && revealRarity && rarityRank(revealRarity) >= rarityRank("Legendary"),
+  );
   const sessionRewards = useMemo(() => getSessionRewardProgress(state, now), [state, now]);
   const nextSessionReward = sessionRewards.find((reward) => !reward.claimed);
   const activeEventRemaining = state.activeEvent?.endsAt ? Math.max(0, state.activeEvent.endsAt - now) : 0;
@@ -676,6 +699,7 @@ export default function App() {
       purchaseId: completed.purchase.id,
       source: "backend_mock",
     });
+    playPurchaseSuccess();
     haptic.success();
   };
 
@@ -702,6 +726,7 @@ export default function App() {
       }
       setPendingProductId(null);
       notify(`${status.product.title} payment confirmed`, "good");
+      playPurchaseSuccess();
       haptic.success();
     }
   };
@@ -1034,6 +1059,7 @@ export default function App() {
   };
 
   const handleTabChange = (tab: TabId) => {
+    playButtonTap();
     setActiveTab(tab);
     if (tab === "collection") {
       setState((current) => completeTutorialTask(current, "open_collection"));
@@ -1047,6 +1073,7 @@ export default function App() {
   const handleTutorialClaim = (taskId: TutorialTaskId) => {
     spendOrWarn(claimTutorialReward(state, taskId), () => {
       notify("Beginner quest reward claimed", "good");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1054,6 +1081,7 @@ export default function App() {
   const handleAchievementClaim = (achievementId: AchievementId) => {
     spendOrWarn(claimAchievementReward(state, achievementId, now), () => {
       notify("Achievement reward claimed", "good");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1061,6 +1089,7 @@ export default function App() {
   const handleAlbumClaim = (rarity: Rarity) => {
     spendOrWarn(claimAlbumReward(state, rarity, now), () => {
       notify(`${rarity} album reward claimed`, "good");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1068,6 +1097,7 @@ export default function App() {
   const handleFullAlbumClaim = () => {
     spendOrWarn(claimFullAlbumReward(state, now), () => {
       notify("Full collection reward claimed", "event");
+      playRewardClaim();
       haptic.impact("heavy");
     });
   };
@@ -1090,6 +1120,7 @@ export default function App() {
   };
 
   const handleHatch = () => {
+    playButtonTap();
     if (isHatching) {
       return;
     }
@@ -1101,8 +1132,10 @@ export default function App() {
     }
 
     track("hatch_started", { premium: state.premiumCapsules > 0 });
+    playHatchStart();
     setState(ensureProgressionState(completeTutorialTask(result.state, "first_hatch")));
     setLastHatched(null);
+    setLastHatchResult(null);
     setRevealRarity(result.creature.rarity);
     setScreenFlash(null);
     setActiveTab("hatch");
@@ -1111,26 +1144,46 @@ export default function App() {
 
     window.setTimeout(() => {
       setLastHatched(result.creature);
+      setLastHatchResult(result);
       setRevealKey((key) => key + 1);
       setIsHatching(false);
       if (isRareOrBetter(result.creature.rarity)) {
         setScreenFlash(result.creature.rarity);
-        window.setTimeout(() => setScreenFlash(null), result.creature.rarity === "Secret" ? 980 : 620);
+        const flashMs =
+          result.creature.rarity === "Secret"
+            ? 1100
+            : result.creature.rarity === "Mythic"
+              ? 960
+              : result.creature.rarity === "Legendary"
+                ? 840
+                : 620;
+        window.setTimeout(() => setScreenFlash(null), flashMs);
       }
       window.setTimeout(() => setRevealRarity(null), 1500);
       if (isFlexRarity(result.creature.rarity)) {
         setRecentRareHatch(result.creature);
       }
+      playHatchReveal(result.creature.rarity);
       if (result.creature.rarity === "Secret") {
-        playSecretSoundPlaceholder(result.creature);
         notify("SECRET MUTANT DISCOVERED", "event");
+      } else if (result.duplicate) {
+        playRewardClaim();
+        notify(`Duplicate converted: +${result.shardsGained} shards`, "good");
+      } else {
+        notify(`${result.creature.rarity} mutant hatched`, isFlexRarity(result.creature.rarity) ? "event" : "good");
       }
       hapticForRarity(result.creature.rarity);
-      track("hatch_completed", { rarity: result.creature.rarity, creatureId: result.creature.id });
+      track("hatch_completed", {
+        rarity: result.creature.rarity,
+        creatureId: result.creature.id,
+        duplicate: result.duplicate,
+        shardsGained: result.shardsGained,
+      });
     }, getRevealDelay(result.creature.rarity));
   };
 
   const handleBreed = () => {
+    playButtonTap();
     const [firstId, secondId] = breedSelection;
     const result = firstId && secondId ? breedCreatures(state, firstId, secondId) : null;
     if (!result) {
@@ -1139,12 +1192,14 @@ export default function App() {
     }
     setState(ensureProgressionState(result.state));
     setLastHatched(result.creature);
+    setLastHatchResult(result);
     setRevealKey((key) => key + 1);
     if (isFlexRarity(result.creature.rarity)) {
       setRecentRareHatch(result.creature);
     }
     setBreedSelection([]);
     setActiveTab("hatch");
+    playHatchReveal(result.creature.rarity);
     hapticForRarity(result.creature.rarity);
     track("breed_completed", { rarity: result.creature.rarity, creatureId: result.creature.id });
   };
@@ -1180,6 +1235,7 @@ export default function App() {
     spendOrWarn(next ? completeTutorialTask(next, "claim_daily") : null, () => {
       notify("Daily reward claimed", "good");
       track("daily_reward_claimed");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1187,6 +1243,7 @@ export default function App() {
   const handleFreeCapsule = () => {
     spendOrWarn(claimFreeCapsule(state, now), () => {
       notify("Free capsule added", "good");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1231,11 +1288,15 @@ export default function App() {
     if (!recentRareHatch) {
       return;
     }
-    const text = `I just hatched a ${recentRareHatch.rarity} ${recentRareHatch.name} in Neon Mutant Hatchery. Try to beat this pull.`;
+    handleSharePull(recentRareHatch);
+  };
+
+  const handleSharePull = (creature: Creature) => {
+    const text = `I just hatched a ${creature.rarity} ${creature.name} in Neon Mutant Hatchery. Try to beat this pull.`;
     shareTelegramInvite(referralLink, text);
     notify("Rare hatch shared", "good");
-    track("rare_hatch_shared", { rarity: recentRareHatch.rarity, creatureId: recentRareHatch.id });
-    haptic.impact(recentRareHatch.rarity === "Secret" ? "heavy" : "medium");
+    track("rare_hatch_shared", { rarity: creature.rarity, creatureId: creature.id });
+    haptic.impact(creature.rarity === "Secret" ? "heavy" : "medium");
   };
 
   const handleInviteMilestone = async (invites: number) => {
@@ -1264,6 +1325,7 @@ export default function App() {
         await refreshBackendReferralStats(cloudPlayerId);
       }
       notify(`Invite milestone ${invites} claimed`, "good");
+      playRewardClaim();
       haptic.success();
     } catch (error) {
       console.warn("[referral] Milestone claim failed.", error);
@@ -1312,6 +1374,7 @@ export default function App() {
   const handleMissionClaim = (missionId: MissionId) => {
     spendOrWarn(claimMissionReward(state, missionId), () => {
       notify("Mission reward claimed", "good");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1319,6 +1382,7 @@ export default function App() {
   const handleSessionReward = (rewardId: SessionRewardId) => {
     spendOrWarn(claimSessionReward(state, rewardId, now), () => {
       notify("Session reward claimed", "good");
+      playRewardClaim();
       haptic.success();
     });
   };
@@ -1327,6 +1391,7 @@ export default function App() {
     spendOrWarn(buyLimitedOffer(state, offerId, now), () => {
       notify(LIMITED_OFFERS[offerId].rewardLabel, "good");
       track("shop_purchase_mocked", { offerId });
+      playPurchaseSuccess();
       haptic.impact("heavy");
     });
   };
@@ -1394,6 +1459,7 @@ export default function App() {
         setPaymentsMode("local");
         notify(`${purchase.product.title} mocked`, "good");
         track("shop_purchase_mocked", { productId, source: "local" });
+        playPurchaseSuccess();
       }
 
       setPendingProductId(null);
@@ -1415,6 +1481,7 @@ export default function App() {
         setPaymentsMode("local");
         notify(`${purchase.product.title} mocked locally`, "good");
         track("shop_purchase_mocked", { productId, source: "local_fallback" });
+        playPurchaseSuccess();
         haptic.success();
       } else {
         notify("Purchase unavailable", "event");
@@ -1455,7 +1522,11 @@ export default function App() {
   };
 
   return (
-    <main className={`app-shell ${lastHatched?.rarity === "Secret" ? "secret-distort" : ""}`}>
+    <main
+      className={`app-shell ${lastHatched?.rarity === "Secret" ? "secret-distort" : ""} ${
+        rareRevealActive ? "reveal-lock" : ""
+      }`}
+    >
       <div className="app-content">
         <section className="top-panel">
           <div>
@@ -1470,6 +1541,7 @@ export default function App() {
                 setState(ensureProgressionState(applyStarterRewards(ensureReferralCode(ensureLiveOpsState(resetGameState())))));
                 setOnboardingStep(0);
                 setLastHatched(null);
+                setLastHatchResult(null);
                 setRevealRarity(null);
                 setScreenFlash(null);
                 setRecentRareHatch(null);
@@ -1487,6 +1559,7 @@ export default function App() {
           <AnimatedStatPill label="Coins" value={state.coins} />
           <StatPill label="Gems" value={formatNumber(state.gems)} />
           <StatPill label="Capsules" value={`${formatNumber(state.eggs)} / P${state.premiumCapsules}`} />
+          <StatPill label="Shards" value={formatNumber(state.mutantShards)} />
         </section>
 
         {stateLoadError ? (
@@ -1518,6 +1591,12 @@ export default function App() {
       </div>
 
       {screenFlash ? <div className={`screen-flash flash-${screenFlash.toLowerCase()}`} aria-hidden="true" /> : null}
+      {rareRevealActive && revealRarity ? (
+        <div className={`pull-reveal-overlay reveal-${revealRarity.toLowerCase()}`} aria-live="assertive">
+          <span>{revealRarity === "Secret" ? "signal fracture" : revealRarity === "Mythic" ? "core overload" : "critical hatch"}</span>
+          <strong>{revealRarity.toUpperCase()}</strong>
+        </div>
+      ) : null}
 
       <section className="screen">
         {activeTab === "hatch" ? (
@@ -1628,6 +1707,24 @@ export default function App() {
                     </div>
                     <p>{hatchStreakRemaining > 0 ? `${formatDuration(hatchStreakRemaining)} before reset` : "Hatch to start a streak"}</p>
                   </div>
+                  {lastHatchResult ? (
+                    <div className={`hatch-result-card ${RARITY_CONFIG[lastHatchResult.creature.rarity].className}`}>
+                      <div>
+                        <p className="eyebrow">{lastHatchResult.duplicate ? "Duplicate converted" : "New hatch secured"}</p>
+                        <h3>{lastHatchResult.creature.name}</h3>
+                        <div className="result-badges">
+                          <span>{lastHatchResult.creature.rarity}</span>
+                          <span>Power {formatNumber(getPowerScore(lastHatchResult.creature))}</span>
+                          <span>{lastHatchResult.duplicate ? `+${lastHatchResult.shardsGained} shards` : "NEW"}</span>
+                        </div>
+                      </div>
+                      {rarityRank(lastHatchResult.creature.rarity) >= rarityRank("Legendary") ? (
+                        <button className="mini-button" onClick={() => handleSharePull(lastHatchResult.creature)}>
+                          Share Pull
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <details className="hatch-details">
                     <summary>Details</summary>
                     <div className="hatch-meta-grid">
@@ -1740,11 +1837,15 @@ export default function App() {
                       creature={creature}
                       isFavorite={state.favoriteCreatureIds.includes(creature.id)}
                       upgrading={upgradingCreatureId === creature.id}
-                      canUpgrade={state.coins >= getUpgradeCost(creature)}
+                      canUpgrade={
+                        state.coins >= getUpgradeCost(creature) ||
+                        state.mutantShards >= getUpgradeShardCost(creature)
+                      }
                       highlightUpgrade={
                         currentTutorialTask?.id === "upgrade_creature" &&
                         !currentTutorialTask.completed &&
-                        state.coins >= getUpgradeCost(creature)
+                        (state.coins >= getUpgradeCost(creature) ||
+                          state.mutantShards >= getUpgradeShardCost(creature))
                       }
                       onClick={() => setDetailCreatureId(creature.id)}
                       onFavorite={() => handleFavorite(creature.id)}
@@ -1997,6 +2098,20 @@ export default function App() {
             </div>
             <details className="compact-section settings-section">
               <summary>Settings</summary>
+              <button
+                className="settings-toggle"
+                onClick={() => {
+                  const enabled = toggleSound();
+                  setSoundEnabled(enabled);
+                  if (enabled) {
+                    playButtonTap();
+                  }
+                  haptic.selection();
+                }}
+              >
+                <span>Sound hooks</span>
+                <strong>{soundEnabled ? "On" : "Off"}</strong>
+              </button>
               <div className="stats-grid">
                 <StatPill label="Creatures" value={formatNumber(state.creatures.length)} />
                 <StatPill label="Income/min" value={formatNumber(totalIncome)} />
@@ -2103,6 +2218,7 @@ export default function App() {
                   );
                   setOnboardingStep(0);
                   setLastHatched(null);
+                  setLastHatchResult(null);
                   setRevealRarity(null);
                   setScreenFlash(null);
                   setRecentRareHatch(null);
@@ -2125,6 +2241,7 @@ export default function App() {
                   setAnalyticsCount(getAnalyticsEventCount());
                   setOnboardingStep(0);
                   setLastHatched(null);
+                  setLastHatchResult(null);
                   setRevealRarity(null);
                   setScreenFlash(null);
                   setRecentRareHatch(null);
@@ -2220,6 +2337,7 @@ export default function App() {
               <StatPill label="Level" value={formatNumber(detailCreature.level)} />
               <StatPill label="Generation" value={formatNumber(detailCreature.generation)} />
               <StatPill label="Upgrade" value={formatNumber(getUpgradeCost(detailCreature))} />
+              <StatPill label="Shard alt" value={formatNumber(getUpgradeShardCost(detailCreature))} />
             </div>
             <div className="detail-section">
               <strong>Passive traits</strong>
@@ -2247,14 +2365,19 @@ export default function App() {
               className={`primary-button ${
                 currentTutorialTask?.id === "upgrade_creature" &&
                 !currentTutorialTask.completed &&
-                state.coins >= getUpgradeCost(detailCreature)
+                (state.coins >= getUpgradeCost(detailCreature) ||
+                  state.mutantShards >= getUpgradeShardCost(detailCreature))
                   ? "tutorial-glow"
                   : ""
               }`}
-              disabled={state.coins < getUpgradeCost(detailCreature)}
+              disabled={
+                state.coins < getUpgradeCost(detailCreature) &&
+                state.mutantShards < getUpgradeShardCost(detailCreature)
+              }
               onClick={() => handleUpgrade(detailCreature.id)}
             >
-              Level up - {formatNumber(getUpgradeCost(detailCreature))}
+              Level up - {formatNumber(getUpgradeCost(detailCreature))} coins /{" "}
+              {formatNumber(getUpgradeShardCost(detailCreature))} shards
             </button>
             <button className="mini-button" onClick={() => handleMockMint(detailCreature.id)}>
               Mock mint metadata

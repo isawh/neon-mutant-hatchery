@@ -121,6 +121,7 @@ export type GameState = {
   gems: number;
   eggs: number;
   premiumCapsules: number;
+  mutantShards: number;
   creatures: Creature[];
   hatchStreak: number;
   lastHatchAt: number;
@@ -164,4 +165,6 @@ export type GameState = {
 export type HatchResult = {
   state: GameState;
   creature: Creature;
+  duplicate: boolean;
+  shardsGained: number;
 };

@@ -6,6 +6,7 @@ import {
   RARITY_ALBUM_GOALS,
   DAILY_MISSION_POOL,
   DAILY_LOGIN_REWARDS,
+  DUPLICATE_SHARDS_BY_RARITY,
   BREED_COIN_COST,
   BREED_GEM_COST,
   EYE_TYPES,
@@ -195,6 +196,7 @@ export const ensureProgressionState = (state: GameState): GameState => {
   const existingAchievements = new Map(state.achievements.map((achievement) => [achievement.id, achievement]));
   return {
     ...state,
+    mutantShards: typeof state.mutantShards === "number" ? state.mutantShards : 0,
     achievements: ACHIEVEMENTS.map((achievement) => {
       const existing = existingAchievements.get(achievement.id);
       return {
@@ -398,6 +400,9 @@ export const getUpgradeCost = (creature: Creature) =>
       (1 + creature.passiveTraits.length * 0.08),
   );
 
+export const getUpgradeShardCost = (creature: Creature) =>
+  Math.max(4, Math.round((creature.level + 1) * (RARITY_ORDER.indexOf(creature.rarity) + 1) * 3.2));
+
 export const getRarityChances = (state?: GameState, premium = false) => {
   const now = Date.now();
   const hatchStreakBonus = state ? getHatchStreakLuckBonus(state, now) : 0;
@@ -452,6 +457,19 @@ export const pickRarity = (state?: GameState, premium = false): Rarity => {
   return "Common";
 };
 
+const pickHatchRarity = (state: GameState, premium = false): Rarity => {
+  if (state.totalHatches === 0) {
+    return "Rare";
+  }
+
+  const rarity = pickRarity(state, premium);
+  if (state.totalHatches < 3 && RARITY_ORDER.indexOf(rarity) >= RARITY_ORDER.indexOf("Legendary")) {
+    return Math.random() > 0.32 ? "Rare" : "Epic";
+  }
+
+  return rarity;
+};
+
 const getPassiveTraitCount = (rarity: Rarity) => {
   const rank = RARITY_ORDER.indexOf(rarity);
   if (rank === 0) {
@@ -490,29 +508,74 @@ const pickVisualDna = (rarity: Rarity, parents: Creature[]) => {
     inherited.length && Math.random() > 0.42 ? getter(sample(inherited)) : sample(items);
 
   const rarityRankValue = RARITY_ORDER.indexOf(rarity);
+  if (rarity === "Secret") {
+    return {
+      bodyShape: sample(["asym", "poly", "crystal", "spindle"]),
+      eyeType: sample(["glitch", "void", "ring"]),
+      hornType: sample(["crystal", "halo", "forked", "spikes"]),
+      auraStyle: "glitch",
+      patternStyle: sample(["circuit", "cracks", "rings"]),
+      mutationEffect: "glitch",
+    };
+  }
+
+  if (rarity === "Mythic") {
+    return {
+      bodyShape: sample(["helix", "vector", "crystal", "spindle", "asym"]),
+      eyeType: sample(["visor", "diamond", "ring", "void", "triple"]),
+      hornType: sample(["halo", "crystal", "forked", "spikes"]),
+      auraStyle: sample(["flare", "halo", "comet", "radial", "pulse"]),
+      patternStyle: sample(["circuit", "cracks", "stars", "rings", "veins"]),
+      mutationEffect: sample(["shimmer", "scan", "orbit", "flare"]),
+    };
+  }
+
+  if (rarity === "Legendary") {
+    return {
+      bodyShape: sample(["helix", "vector", "asym", "spindle", "crystal"]),
+      eyeType: sample(["visor", "triple", "diamond", "ring", "void"]),
+      hornType: sample(["long", "curved", "halo", "spikes", "crystal"]),
+      auraStyle: sample(["flare", "halo", "comet", "radial"]),
+      patternStyle: sample(PATTERN_STYLES.filter((type) => type !== "none")),
+      mutationEffect: sample(["spark", "orbit", "scan", "shimmer", "flare", "ripple"]),
+    };
+  }
+
   return {
-    bodyShape: inherit(BODY_SHAPES, (dna) => dna.bodyShape),
-    eyeType: inherit(EYE_TYPES, (dna) => dna.eyeType),
+    bodyShape:
+      rarity === "Common"
+        ? inherit(["blob", "node", "orb", "bud", "disc"], (dna) => dna.bodyShape)
+        : rarity === "Rare"
+          ? inherit(["blob", "node", "helix", "disc", "tendril", "poly", "orb"], (dna) => dna.bodyShape)
+          : inherit(BODY_SHAPES.filter((shape) => shape !== "slug"), (dna) => dna.bodyShape),
+    eyeType:
+      rarity === "Common"
+        ? inherit(["round", "wide", "mono", "spark"], (dna) => dna.eyeType)
+        : inherit(EYE_TYPES, (dna) => dna.eyeType),
     hornType:
-      rarityRankValue >= 3
+      rarity === "Common"
+        ? inherit(["none", "short", "antenna"], (dna) => dna.hornType)
+        : rarityRankValue >= 3
         ? sample(HORN_TYPES.filter((type) => type !== "none"))
         : inherit(HORN_TYPES, (dna) => dna.hornType),
     auraStyle:
-      rarity === "Secret"
-        ? "glitch"
-        : rarityRankValue >= 4
-          ? sample(["flare", "halo", "comet", "radial", "pulse"])
-          : inherit(AURA_STYLES, (dna) => dna.auraStyle),
+      rarity === "Common"
+        ? sample(["soft", "ring"])
+        : rarity === "Rare"
+          ? sample(["ring", "mist", "pulse", "static"])
+          : sample(["flare", "mist", "pulse", "static", "radial"]),
     patternStyle:
-      rarityRankValue >= 2
+      rarity === "Common"
+        ? sample(["none", "spots", "ridges"])
+        : rarityRankValue >= 2
         ? sample(PATTERN_STYLES.filter((type) => type !== "none"))
         : inherit(PATTERN_STYLES, (dna) => dna.patternStyle),
     mutationEffect:
-      rarity === "Secret"
-        ? "glitch"
-        : rarityRankValue >= 3
-          ? sample(["spark", "orbit", "scan", "shimmer", "flare", "ripple"])
-          : inherit(MUTATION_EFFECTS, (dna) => dna.mutationEffect),
+      rarity === "Common"
+        ? sample(["dust", "ripple", "spark"])
+        : rarity === "Rare"
+          ? sample(["spark", "drip", "orbit", "scan"])
+          : sample(["spark", "orbit", "scan", "shimmer", "flare", "ripple"]),
   };
 };
 
@@ -530,8 +593,9 @@ export const createRandomCreature = (
   knownNames: string[] = [],
   state?: GameState,
   premium = false,
+  forcedRarity?: Rarity,
 ): Creature => {
-  const rarity = parents.length ? inheritRarity(parents) : pickRarity(state, premium);
+  const rarity = forcedRarity ?? (parents.length ? inheritRarity(parents) : pickRarity(state, premium));
   const incomeConfig = RARITY_CONFIG[rarity];
   const inheritedColors = parents.flatMap((parent) => [
     parent.colors.body,
@@ -557,7 +621,14 @@ export const createRandomCreature = (
   ).slice(0, rarity === "Common" ? 2 : 3);
 
   const passiveTraits = pickPassiveTraits(rarity, parentPassiveTraits);
-  const name = createCreatureName(rarity);
+  const knownSameRarityNames = state?.creatures
+    .filter((existing) => existing.rarity === rarity)
+    .map((existing) => existing.name) ?? [];
+  const duplicateChance = Math.min(0.28, knownSameRarityNames.length * 0.035);
+  const name =
+    knownSameRarityNames.length && Math.random() < duplicateChance
+      ? sample(knownSameRarityNames)
+      : createCreatureName(rarity);
   const creature: Creature = {
     id: createId(),
     name,
@@ -604,7 +675,10 @@ export const hatchEgg = (state: GameState): HatchResult | null => {
     return null;
   }
 
-  const creature = createRandomCreature(1, [], liveState.discoveredCreatureNames, liveState, usesPremium);
+  const rarity = pickHatchRarity(liveState, usesPremium);
+  const creature = createRandomCreature(1, [], liveState.discoveredCreatureNames, liveState, usesPremium, rarity);
+  const duplicate = liveState.discoveredCreatureNames.includes(creature.name);
+  const shardsGained = duplicate ? DUPLICATE_SHARDS_BY_RARITY[creature.rarity] : 0;
   const nextState = progressMission(
     {
       ...liveState,
@@ -615,8 +689,11 @@ export const hatchEgg = (state: GameState): HatchResult | null => {
       lastHatchAt: now,
       hatchStreakExpiresAt: now + HATCH_STREAK_TIMEOUT_MS,
       totalHatches: liveState.totalHatches + 1,
-      discoveredCreatureNames: Array.from(new Set([...liveState.discoveredCreatureNames, creature.name])),
-      creatures: [creature, ...liveState.creatures],
+      mutantShards: liveState.mutantShards + shardsGained,
+      discoveredCreatureNames: duplicate
+        ? liveState.discoveredCreatureNames
+        : Array.from(new Set([...liveState.discoveredCreatureNames, creature.name])),
+      creatures: duplicate ? liveState.creatures : [creature, ...liveState.creatures],
       lastActiveAt: now,
     },
     "hatch_3",
@@ -624,6 +701,8 @@ export const hatchEgg = (state: GameState): HatchResult | null => {
 
   return {
     creature,
+    duplicate,
+    shardsGained,
     state: nextState,
   };
 };
@@ -647,6 +726,8 @@ export const breedCreatures = (
 
   const generation = Math.max(parents[0].generation, parents[1].generation) + 1;
   const creature = createRandomCreature(generation, parents as Creature[], state.discoveredCreatureNames, state);
+  const duplicate = state.discoveredCreatureNames.includes(creature.name);
+  const shardsGained = duplicate ? DUPLICATE_SHARDS_BY_RARITY[creature.rarity] : 0;
   const nextState = progressMission(
     {
       ...state,
@@ -655,8 +736,11 @@ export const breedCreatures = (
       hatchStreak: 0,
       hatchStreakExpiresAt: 0,
       totalBreeds: state.totalBreeds + 1,
-      discoveredCreatureNames: Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
-      creatures: [creature, ...state.creatures],
+      mutantShards: state.mutantShards + shardsGained,
+      discoveredCreatureNames: duplicate
+        ? state.discoveredCreatureNames
+        : Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
+      creatures: duplicate ? state.creatures : [creature, ...state.creatures],
       lastActiveAt: Date.now(),
     },
     "breed_1",
@@ -664,6 +748,8 @@ export const breedCreatures = (
 
   return {
     creature,
+    duplicate,
+    shardsGained,
     state: nextState,
   };
 };
@@ -702,13 +788,17 @@ export const upgradeCreature = (state: GameState, creatureId: string): GameState
   }
 
   const cost = getUpgradeCost(creature);
-  if (state.coins < cost) {
+  const shardCost = getUpgradeShardCost(creature);
+  const usesCoins = state.coins >= cost;
+  const usesShards = !usesCoins && state.mutantShards >= shardCost;
+  if (!usesCoins && !usesShards) {
     return null;
   }
 
   return progressMission({
     ...state,
-    coins: state.coins - cost,
+    coins: usesCoins ? state.coins - cost : state.coins,
+    mutantShards: usesShards ? state.mutantShards - shardCost : state.mutantShards,
     creatures: state.creatures.map((item) => {
       if (item.id !== creatureId) {
         return item;

@@ -54,7 +54,7 @@ const PREMIUM_RARITY_CHANCES: Record<Rarity, number> = {
 const PASSIVE_MULTIPLIERS = [1.08, 1.14, 1.22, 1.3, 1.45];
 const STARTER_REWARD = { coins: 100, gems: 5, eggs: 3 };
 const HATCH_BASE_COST = 26;
-const UPGRADE_BASE_COST = 82;
+const UPGRADE_BASE_COST = 96;
 const BREED_COIN_COST = 320;
 const BREED_GEM_COST = 1;
 const DAILY_REWARD = { coins: 90, gems: 1, eggs: 1 };
@@ -109,6 +109,17 @@ const pickRarity = (rng: () => number, premium: boolean): Rarity => {
   return "Common";
 };
 
+const pickHatchRarity = (state: SimState, rng: () => number, premium: boolean): Rarity => {
+  if (state.totalHatches === 0) {
+    return "Rare";
+  }
+  const rarity = pickRarity(rng, premium);
+  if (state.totalHatches < 3 && RARITY_ORDER.indexOf(rarity) >= RARITY_ORDER.indexOf("Legendary")) {
+    return rng() > 0.32 ? "Rare" : "Epic";
+  }
+  return rarity;
+};
+
 const passiveMultiplier = (rng: () => number, rarity: Rarity) => {
   const rank = RARITY_ORDER.indexOf(rarity);
   const count = rank === 0 ? (rng() > 0.7 ? 1 : 0) : rank === 1 ? 1 : rank <= 2 ? (rng() > 0.55 ? 2 : 1) : 2;
@@ -126,7 +137,7 @@ const hatch = (state: SimState, rng: () => number) => {
     return false;
   }
 
-  const rarity = pickRarity(rng, premium);
+  const rarity = pickHatchRarity(state, rng, premium);
   const income = RARITY_CONFIG[rarity];
   const creature: Creature = {
     rarity,

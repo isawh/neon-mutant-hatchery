@@ -22,6 +22,7 @@ export const INITIAL_STATE: GameState = {
   gems: 0,
   eggs: 0,
   premiumCapsules: 0,
+  mutantShards: 0,
   creatures: [],
   hatchStreak: 0,
   lastHatchAt: 0,
@@ -116,6 +117,15 @@ export const RARITY_CHANCE_CAPS: Partial<Record<Rarity, number>> = {
   Legendary: 6,
   Mythic: 1.5,
   Secret: 0.2,
+};
+
+export const DUPLICATE_SHARDS_BY_RARITY: Record<Rarity, number> = {
+  Common: 2,
+  Rare: 6,
+  Epic: 14,
+  Legendary: 35,
+  Mythic: 80,
+  Secret: 200,
 };
 
 export const TRAITS = [
@@ -370,7 +380,7 @@ export const MAX_OFFLINE_MS = 12 * 60 * 60 * 1000;
 
 export const HATCH_BASE_COST = 26;
 
-export const UPGRADE_BASE_COST = 82;
+export const UPGRADE_BASE_COST = 96;
 
 export const BREED_COIN_COST = 320;
 
@@ -391,9 +401,9 @@ export const DAILY_LOGIN_REWARDS = [
   { day: 2, reward: { coins: 140, gems: 1 }, label: "140 coins + gem" },
   { day: 3, reward: { coins: 190, eggs: 2 }, label: "190 coins + 2 capsules" },
   { day: 4, reward: { coins: 260, gems: 2 }, label: "260 coins + 2 gems" },
-  { day: 5, reward: { coins: 340, premiumCapsules: 1 }, label: "340 coins + premium" },
+  { day: 5, reward: { coins: 340, eggs: 2 }, label: "340 coins + 2 capsules" },
   { day: 6, reward: { coins: 450, gems: 4, luckyBoostMinutes: 30 }, label: "450 coins + 30m luck" },
-  { day: 7, reward: { gems: 8, premiumCapsules: 2, incomeBoostMinutes: 60 }, label: "Day 7 neon jackpot" },
+  { day: 7, reward: { gems: 8, premiumCapsules: 1, incomeBoostMinutes: 60 }, label: "Day 7 neon jackpot" },
 ] as const;
 
 export const DAILY_REWARD = DAILY_LOGIN_REWARDS[0].reward;
@@ -405,7 +415,7 @@ export const SESSION_REWARDS: Array<{
   reward: { coins?: number; gems?: number; eggs?: number; premiumCapsules?: number; incomeBoostMinutes?: number; luckyBoostMinutes?: number };
 }> = [
   { id: "session_5", minutes: 5, title: "5 minute lab check", reward: { gems: 1, eggs: 1 } },
-  { id: "session_15", minutes: 15, title: "15 minute surge", reward: { gems: 2, premiumCapsules: 1 } },
+  { id: "session_15", minutes: 15, title: "15 minute surge", reward: { gems: 2, eggs: 2 } },
   { id: "session_30", minutes: 30, title: "30 minute deep run", reward: { gems: 4, eggs: 3, luckyBoostMinutes: 20 } },
 ];
 

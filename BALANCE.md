@@ -23,17 +23,18 @@ Latest deterministic sim output:
 
 | Scenario | First upgrade | First breed | 10m capsules | 10m upgrades |
 | --- | ---: | ---: | ---: | ---: |
-| Free player, 10m | 1.8m | 7.0m | 3 | 3 |
-| Free player, 30m seed | 0.8m | 5.9m | 3 | 10 |
-| Premium player, 10m | 0.0m | 5.0m | 3 | 4 |
-| Premium player, 30m seed | 0.0m | 5.0m | 3 | 10 |
+| Free player, 10m | 1.7m | 5.3m | 3 | 3 |
+| Free player, 30m seed | 1.9m | 8.0m | 3 | 8 |
+| Premium player, 10m | 0.0m | 2.8m | 3 | 4 |
+| Premium player, 30m seed | 0.0m | 2.8m | 3 | 10 |
 
-Premium can upgrade immediately because paid capsules avoid the first coin spend and create more income right away. That is intentional for testing, but the breed gate keeps it from collapsing the whole loop.
+Premium can upgrade immediately because paid capsules avoid the first coin spend and create more income right away. Early free premium rewards were reduced so rare pulls remain special outside paid/testing paths.
 
 ## Tuned Values
 
 - Base hatch cost: `26` coins, scaling by total hatches and hatch streak.
-- Base upgrade cost: `82` coins, scaling by level, rarity, and passive traits.
+- Base upgrade cost: `96` coins, scaling by level, rarity, and passive traits.
+- Duplicate creatures convert into mutant shards. Shards are saved in local/cloud game state and can cover an upgrade when coins are short.
 - Breed cost: `320` coins + `1` gem.
 - Daily reward: `90` coins + `1` gem + `1` capsule, plus login streak coin bonus.
 
@@ -43,14 +44,14 @@ These values make the first hatch instant, keep the first upgrade close to the 1
 
 Base hatch odds remain:
 
-- Common: 61.95%
-- Rare: 24%
-- Epic: 10%
-- Legendary: 3.5%
-- Mythic: 0.5%
-- Secret: 0.05%
+- Common: 72%
+- Rare: 22%
+- Epic: 5%
+- Legendary: 0.8%
+- Mythic: 0.18%
+- Secret: 0.02%
 
-Premium capsules add a rarity bonus rather than guaranteeing high rarity. This makes premium feel better over several hatches without making free hatch outcomes irrelevant.
+Premium capsules use stricter but improved odds: Common 45%, Rare 35%, Epic 15%, Legendary 4%, Mythic 0.9%, Secret 0.1%. Luck boosts are capped at Legendary 6%, Mythic 1.5%, and Secret 0.2%. The first hatch is guaranteed Rare, and the first three hatches cannot roll Legendary/Mythic/Secret so the opening session stays readable.
 
 ## Income Curve
 

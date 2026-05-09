@@ -275,6 +275,8 @@ export const loadGameState = (): GameState => {
       eggs: typeof parsed.eggs === "number" ? parsed.eggs : INITIAL_STATE.eggs,
       premiumCapsules:
         typeof parsed.premiumCapsules === "number" ? parsed.premiumCapsules : INITIAL_STATE.premiumCapsules,
+      mutantShards:
+        typeof parsed.mutantShards === "number" ? parsed.mutantShards : INITIAL_STATE.mutantShards,
       creatures,
       hatchStreak: typeof parsed.hatchStreak === "number" ? parsed.hatchStreak : INITIAL_STATE.hatchStreak,
       lastHatchAt: typeof parsed.lastHatchAt === "number" ? parsed.lastHatchAt : INITIAL_STATE.lastHatchAt,

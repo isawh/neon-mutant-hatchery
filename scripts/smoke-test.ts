@@ -6,6 +6,7 @@ import {
   DAILY_LOGIN_REWARDS,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
+  DUPLICATE_SHARDS_BY_RARITY,
   EYE_TYPES,
   EVENT_ROTATION_INTERVAL_MS,
   HATCH_BASE_COST,
@@ -71,6 +72,7 @@ const checkFiles = () => {
     "src/game.ts",
     "src/storage.ts",
     "src/telegram.ts",
+    "src/services/soundService.ts",
     "src/services/paymentService.ts",
     "scripts/balance-sim.ts",
     "scripts/smoke-test.ts",
@@ -111,6 +113,7 @@ const checks: Check[] = [
       assert(UPGRADE_BASE_COST > HATCH_BASE_COST, "UPGRADE_BASE_COST should be higher than hatch base cost");
       assert(BREED_COIN_COST > UPGRADE_BASE_COST, "BREED_COIN_COST should be a medium-term goal");
       assert(INITIAL_STATE.coins >= 0 && INITIAL_STATE.gems >= 0 && INITIAL_STATE.eggs >= 0, "Initial resources invalid");
+      assert(INITIAL_STATE.mutantShards === 0, "Initial mutant shards should start at zero");
       assert(TABS.length === 5 && unique(TABS.map((tab) => tab.id)), "Tabs must contain five unique ids");
       assert(TUTORIAL_TASKS.length > 0 && unique(TUTORIAL_TASKS.map((task) => task.id)), "Tutorial task ids invalid");
       assert(DAILY_LOGIN_REWARDS.length === 7, "Daily login calendar must have seven days");
@@ -154,6 +157,7 @@ const checks: Check[] = [
       RARITY_ORDER.forEach((rarity) => {
         const config = RARITY_CONFIG[rarity];
         assert(config.minIncome > 0 && config.maxIncome >= config.minIncome, `Invalid income range for ${rarity}`);
+        assert(DUPLICATE_SHARDS_BY_RARITY[rarity] > 0, `Duplicate shard reward missing for ${rarity}`);
         assert(RARITY_ALBUM_GOALS[rarity].total > 0, `Invalid album total for ${rarity}`);
         assert(hasReward(RARITY_ALBUM_GOALS[rarity].reward), `Missing album reward for ${rarity}`);
       });
