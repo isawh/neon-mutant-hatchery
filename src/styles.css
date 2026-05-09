@@ -132,12 +132,15 @@ button:not(:disabled):active {
 }
 
 html.is-telegram-mobile .app-content {
-  padding-top: 72px !important;
+  padding-top: 104px !important;
 }
 
 html.is-telegram-mobile .app-header,
-html.is-telegram-mobile .top-panel {
+html.is-telegram-mobile .top-panel,
+html.is-telegram-mobile .screen-title,
+html.is-telegram-mobile .logo {
   margin-top: 0;
+  transform: none;
 }
 
 .app-shell.secret-distort {
