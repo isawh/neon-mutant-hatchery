@@ -3588,6 +3588,15 @@ p {
 }
 
 @media (max-width: 639px) {
+  .tg-mobile .app-content {
+    padding-top: max(var(--tg-safe-area-top, 0px), 52px);
+  }
+
+  .tg-mobile .top-panel {
+    min-height: 44px;
+    padding-top: 0;
+  }
+
   .top-panel {
     min-height: 44px;
     padding-top: max(8px, env(safe-area-inset-top), var(--tg-safe-area-top, 0px));
