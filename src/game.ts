@@ -3,11 +3,15 @@ import {
   FULL_COLLECTION_REWARD,
   RARITY_ALBUM_GOALS,
   DAILY_MISSION_POOL,
+  DAILY_LOGIN_REWARDS,
   BREED_COIN_COST,
   BREED_GEM_COST,
+  EVENT_ROTATION_INTERVAL_MS,
   FREE_CAPSULE_COOLDOWN_MS,
-  DAILY_REWARD,
   HATCH_BASE_COST,
+  HATCH_STREAK_LUCK_PER_HATCH,
+  HATCH_STREAK_MAX_LUCK,
+  HATCH_STREAK_TIMEOUT_MS,
   LIMITED_OFFERS,
   MAX_OFFLINE_MS,
   NAME_PREFIXES,
@@ -18,6 +22,7 @@ import {
   RARE_EVENTS,
   RARITY_CONFIG,
   RARITY_ORDER,
+  SESSION_REWARDS,
   STARTER_REWARD,
   TRAITS,
   TUTORIAL_TASKS,
@@ -35,6 +40,7 @@ import type {
   ProgressionReward,
   Rarity,
   AchievementId,
+  SessionRewardId,
   TutorialTaskId,
 } from "./types";
 
@@ -47,6 +53,11 @@ const createId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 
 const todayKey = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
+
+const dateKeyFromDateString = (value: string) => {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? todayKey(parsed) : value;
+};
 
 const getMissionRotation = (now = Date.now()): DailyMission[] => {
   const ids = Object.keys(DAILY_MISSION_POOL) as MissionId[];
@@ -285,42 +296,44 @@ const progressMission = (state: GameState, missionId: MissionId, amount = 1): Ga
   ),
 });
 
-const rollRareEvent = (state: GameState, now = Date.now()): ActiveRareEvent | null => {
-  if (state.activeEvent && state.activeEvent.endsAt > now) {
-    return state.activeEvent;
-  }
-  if (new Date(state.lastRareEventRollAt).toDateString() === new Date(now).toDateString()) {
-    return state.activeEvent && state.activeEvent.endsAt > now ? state.activeEvent : null;
-  }
-  if (Math.random() > 0.12) {
+const getRotatingEvent = (now = Date.now()): ActiveRareEvent | null => {
+  const events = [...RARE_EVENTS];
+  const slot = Math.floor(now / EVENT_ROTATION_INTERVAL_MS);
+  const startsAt = slot * EVENT_ROTATION_INTERVAL_MS;
+  const event = events[slot % events.length];
+  const endsAt = startsAt + event.durationMs;
+  if (endsAt <= now) {
     return null;
   }
-
-  const event = sample([...RARE_EVENTS]);
   return {
     id: event.id,
     title: event.title,
     description: event.description,
-    endsAt: now + event.durationMs,
+    startsAt,
+    endsAt,
   };
 };
 
 export const ensureLiveOpsState = (state: GameState, now = Date.now()): GameState => {
   const date = todayKey(now);
   const needsMissions = state.dailyMissionDate !== date || state.dailyMissions.length === 0;
-  const activeEvent = rollRareEvent(state, now);
+  const manualEvent =
+    state.activeEvent && state.activeEvent.endsAt > now && !state.activeEvent.startsAt ? state.activeEvent : null;
+  const activeEvent = manualEvent ?? getRotatingEvent(now);
+  const hatchStreakActive = state.hatchStreak > 0 && state.hatchStreakExpiresAt > now;
 
   return {
     ...state,
+    hatchStreak: hatchStreakActive ? state.hatchStreak : 0,
+    hatchStreakExpiresAt: hatchStreakActive ? state.hatchStreakExpiresAt : 0,
     activeEvent,
-    lastRareEventRollAt:
-      state.lastRareEventRollAt && new Date(state.lastRareEventRollAt).toDateString() === new Date(now).toDateString()
-        ? state.lastRareEventRollAt
-        : now,
+    lastRareEventRollAt: activeEvent?.startsAt ?? state.lastRareEventRollAt,
     dailyMissionDate: needsMissions ? date : state.dailyMissionDate,
     dailyMissions: needsMissions ? getMissionRotation(now) : state.dailyMissions,
     limitedOfferDate: state.limitedOfferDate === date ? state.limitedOfferDate : date,
     purchasedOfferIds: state.limitedOfferDate === date ? state.purchasedOfferIds : [],
+    sessionStartedAt: state.sessionStartedAt || now,
+    claimedSessionRewards: state.claimedSessionRewards ?? [],
   };
 };
 
@@ -356,6 +369,17 @@ export const getTotalIncomePerMinute = (creatures: Creature[]) =>
 export const getHatchCost = (state: GameState) =>
   Math.round(HATCH_BASE_COST * Math.pow(1.16, Math.max(0, state.totalHatches)) + state.hatchStreak * 4);
 
+export const getHatchStreakRemaining = (state: GameState, now = Date.now()) =>
+  Math.max(0, state.hatchStreakExpiresAt - now);
+
+export const getHatchStreakLuckBonus = (state: GameState, now = Date.now()) => {
+  if (!state.hatchStreak || state.hatchStreakExpiresAt <= now) {
+    return 0;
+  }
+  const eventMultiplier = state.activeEvent?.id === "double_hatch_luck" && state.activeEvent.endsAt > now ? 2 : 1;
+  return Math.min(HATCH_STREAK_MAX_LUCK, state.hatchStreak * HATCH_STREAK_LUCK_PER_HATCH * eventMultiplier);
+};
+
 export const getUpgradeCost = (creature: Creature) =>
   Math.round(
     UPGRADE_BASE_COST *
@@ -366,12 +390,15 @@ export const getUpgradeCost = (creature: Creature) =>
 
 export const getRarityChances = (state?: GameState, premium = false) => {
   const now = Date.now();
+  const hatchStreakBonus = state ? getHatchStreakLuckBonus(state, now) : 0;
   const bonus =
     (premium ? 8 : 0) +
     (state?.rareChanceBonus ?? 0) +
+    hatchStreakBonus +
     (state?.luckyBoostUntil && state.luckyBoostUntil > now ? 6 : 0) +
     (state?.activeEvent?.id === "glitched_capsule" && state.activeEvent.endsAt > now ? 7 : 0) +
-    (state?.activeEvent?.id === "mutation_storm" && state.activeEvent.endsAt > now ? 10 : 0);
+    (state?.activeEvent?.id === "mutation_storm" && state.activeEvent.endsAt > now ? 10 : 0) +
+    (state?.activeEvent?.id === "secret_hour" && state.activeEvent.endsAt > now ? 4 : 0);
 
   const weights = RARITY_ORDER.map((rarity) => {
     const rank = RARITY_ORDER.indexOf(rarity);
@@ -511,24 +538,28 @@ const inheritRarity = (parents: Creature[]): Rarity => {
 };
 
 export const hatchEgg = (state: GameState): HatchResult | null => {
-  const cost = getHatchCost(state);
-  const usesPremium = state.premiumCapsules > 0;
-  if (!usesPremium && (state.eggs <= 0 || state.coins < cost)) {
+  const now = Date.now();
+  const liveState = ensureLiveOpsState(state, now);
+  const cost = getHatchCost(liveState);
+  const usesPremium = liveState.premiumCapsules > 0;
+  if (!usesPremium && (liveState.eggs <= 0 || liveState.coins < cost)) {
     return null;
   }
 
-  const creature = createRandomCreature(1, [], state.discoveredCreatureNames, state, usesPremium);
+  const creature = createRandomCreature(1, [], liveState.discoveredCreatureNames, liveState, usesPremium);
   const nextState = progressMission(
     {
-      ...state,
-      coins: usesPremium ? state.coins : state.coins - cost,
-      eggs: usesPremium ? state.eggs : state.eggs - 1,
-      premiumCapsules: usesPremium ? state.premiumCapsules - 1 : state.premiumCapsules,
-      hatchStreak: state.hatchStreak + 1,
-      totalHatches: state.totalHatches + 1,
-      discoveredCreatureNames: Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
-      creatures: [creature, ...state.creatures],
-      lastActiveAt: Date.now(),
+      ...liveState,
+      coins: usesPremium ? liveState.coins : liveState.coins - cost,
+      eggs: usesPremium ? liveState.eggs : liveState.eggs - 1,
+      premiumCapsules: usesPremium ? liveState.premiumCapsules - 1 : liveState.premiumCapsules,
+      hatchStreak: liveState.hatchStreak + 1,
+      lastHatchAt: now,
+      hatchStreakExpiresAt: now + HATCH_STREAK_TIMEOUT_MS,
+      totalHatches: liveState.totalHatches + 1,
+      discoveredCreatureNames: Array.from(new Set([...liveState.discoveredCreatureNames, creature.name])),
+      creatures: [creature, ...liveState.creatures],
+      lastActiveAt: now,
     },
     "hatch_3",
   );
@@ -564,6 +595,7 @@ export const breedCreatures = (
       coins: state.coins - BREED_COIN_COST,
       gems: state.gems - BREED_GEM_COST,
       hatchStreak: 0,
+      hatchStreakExpiresAt: 0,
       totalBreeds: state.totalBreeds + 1,
       discoveredCreatureNames: Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
       creatures: [creature, ...state.creatures],
@@ -642,8 +674,15 @@ export const toggleFavoriteCreature = (state: GameState, creatureId: string): Ga
 };
 
 export const canClaimDailyReward = (state: GameState, now = Date.now()) => {
-  const last = state.lastDailyRewardAt ? new Date(state.lastDailyRewardAt).toDateString() : "";
-  return last !== new Date(now).toDateString();
+  const today = todayKey(now);
+  const claimedDate =
+    state.claimedLoginRewardDate || (state.lastDailyRewardAt ? todayKey(state.lastDailyRewardAt) : "");
+  return claimedDate !== today;
+};
+
+export const getDailyLoginReward = (state: GameState) => {
+  const day = Math.max(1, Math.min(7, state.loginStreak || 1));
+  return DAILY_LOGIN_REWARDS[day - 1];
 };
 
 export const claimDailyReward = (state: GameState, now = Date.now()): GameState | null => {
@@ -651,15 +690,12 @@ export const claimDailyReward = (state: GameState, now = Date.now()): GameState 
     return null;
   }
 
-  const streakBonus = Math.min(7, state.loginStreak);
-  return {
+  const reward = getDailyLoginReward(state).reward;
+  return applyProgressionReward({
     ...state,
-    coins: state.coins + DAILY_REWARD.coins + streakBonus * 25,
-    gems: state.gems + DAILY_REWARD.gems,
-    eggs: state.eggs + DAILY_REWARD.eggs,
+    claimedLoginRewardDate: todayKey(now),
     lastDailyRewardAt: now,
-    lastActiveAt: now,
-  };
+  }, reward, now);
 };
 
 export const claimFreeCapsule = (state: GameState, now = Date.now()): GameState | null => {
@@ -676,18 +712,20 @@ export const claimFreeCapsule = (state: GameState, now = Date.now()): GameState 
 };
 
 export const applyLoginStreak = (state: GameState, now = Date.now()): GameState => {
-  const today = new Date(now).toDateString();
-  if (state.lastLoginDate === today) {
+  const today = todayKey(now);
+  if (dateKeyFromDateString(state.lastLoginDate) === today) {
     return state;
   }
 
-  const yesterday = new Date(now - 24 * 60 * 60 * 1000).toDateString();
-  const loginStreak = state.lastLoginDate === yesterday ? state.loginStreak + 1 : 1;
+  const yesterday = todayKey(now - 24 * 60 * 60 * 1000);
+  const loginStreak = dateKeyFromDateString(state.lastLoginDate) === yesterday ? state.loginStreak + 1 : 1;
 
   return {
     ...state,
     loginStreak,
     lastLoginDate: today,
+    sessionStartedAt: now,
+    claimedSessionRewards: [],
     lastActiveAt: now,
   };
 };
@@ -716,6 +754,37 @@ export const claimMissionReward = (state: GameState, missionId: MissionId): Game
     ),
     lastActiveAt: Date.now(),
   };
+};
+
+export const getSessionRewardProgress = (state: GameState, now = Date.now()) => {
+  const elapsedMs = Math.max(0, now - (state.sessionStartedAt || now));
+  return SESSION_REWARDS.map((reward) => {
+    const requiredMs = reward.minutes * 60 * 1000;
+    return {
+      ...reward,
+      elapsedMs,
+      requiredMs,
+      progress: Math.min(1, elapsedMs / requiredMs),
+      ready: elapsedMs >= requiredMs,
+      claimed: state.claimedSessionRewards.includes(reward.id),
+    };
+  });
+};
+
+export const claimSessionReward = (
+  state: GameState,
+  rewardId: SessionRewardId,
+  now = Date.now(),
+): GameState | null => {
+  const reward = getSessionRewardProgress(state, now).find((item) => item.id === rewardId);
+  if (!reward || !reward.ready || reward.claimed) {
+    return null;
+  }
+
+  return applyProgressionReward({
+    ...state,
+    claimedSessionRewards: [...state.claimedSessionRewards, rewardId],
+  }, reward.reward, now);
 };
 
 export const buyLimitedOffer = (

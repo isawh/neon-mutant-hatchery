@@ -19,6 +19,8 @@ import type {
   LimitedOfferId,
   MissionId,
   PassiveTrait,
+  RareEventId,
+  SessionRewardId,
   TutorialTask,
   TutorialTaskId,
 } from "./types";
@@ -72,6 +74,16 @@ const isMissionId = (value: unknown): value is MissionId =>
 
 const isLimitedOfferId = (value: unknown): value is LimitedOfferId =>
   value === "premium_capsule" || value === "double_income" || value === "lucky_hatch";
+
+const isSessionRewardId = (value: unknown): value is SessionRewardId =>
+  value === "session_5" || value === "session_15" || value === "session_30";
+
+const isRareEventId = (value: unknown): value is RareEventId =>
+  value === "glitched_capsule" ||
+  value === "double_hatch_luck" ||
+  value === "radiant_surge" ||
+  value === "mutation_storm" ||
+  value === "secret_hour";
 
 const isTutorialTaskId = (value: unknown): value is TutorialTaskId =>
   typeof value === "string" && TUTORIAL_TASKS.some((task) => task.id === value);
@@ -194,17 +206,14 @@ const normalizeActiveEvent = (value: unknown): ActiveRareEvent | null => {
   if (!isRecord(value)) {
     return null;
   }
-  if (
-    value.id !== "glitched_capsule" &&
-    value.id !== "radiant_surge" &&
-    value.id !== "mutation_storm"
-  ) {
+  if (!isRareEventId(value.id)) {
     return null;
   }
   return {
     id: value.id,
     title: typeof value.title === "string" ? value.title : "Rare event",
     description: typeof value.description === "string" ? value.description : "Temporary lab boost.",
+    startsAt: typeof value.startsAt === "number" ? value.startsAt : undefined,
     endsAt: typeof value.endsAt === "number" ? value.endsAt : 0,
   };
 };
@@ -245,6 +254,11 @@ export const loadGameState = (): GameState => {
         typeof parsed.premiumCapsules === "number" ? parsed.premiumCapsules : INITIAL_STATE.premiumCapsules,
       creatures,
       hatchStreak: typeof parsed.hatchStreak === "number" ? parsed.hatchStreak : INITIAL_STATE.hatchStreak,
+      lastHatchAt: typeof parsed.lastHatchAt === "number" ? parsed.lastHatchAt : INITIAL_STATE.lastHatchAt,
+      hatchStreakExpiresAt:
+        typeof parsed.hatchStreakExpiresAt === "number"
+          ? parsed.hatchStreakExpiresAt
+          : INITIAL_STATE.hatchStreakExpiresAt,
       totalHatches: typeof parsed.totalHatches === "number" ? parsed.totalHatches : creatures.length,
       totalBreeds: typeof parsed.totalBreeds === "number" ? parsed.totalBreeds : INITIAL_STATE.totalBreeds,
       discoveredCreatureNames,
@@ -291,12 +305,21 @@ export const loadGameState = (): GameState => {
           : INITIAL_STATE.mutationStormTickets,
       lastDailyRewardAt:
         typeof parsed.lastDailyRewardAt === "number" ? parsed.lastDailyRewardAt : INITIAL_STATE.lastDailyRewardAt,
+      claimedLoginRewardDate:
+        typeof parsed.claimedLoginRewardDate === "string"
+          ? parsed.claimedLoginRewardDate
+          : INITIAL_STATE.claimedLoginRewardDate,
       loginStreak: typeof parsed.loginStreak === "number" ? parsed.loginStreak : INITIAL_STATE.loginStreak,
       lastLoginDate: typeof parsed.lastLoginDate === "string" ? parsed.lastLoginDate : INITIAL_STATE.lastLoginDate,
       freeCapsuleReadyAt:
         typeof parsed.freeCapsuleReadyAt === "number"
           ? parsed.freeCapsuleReadyAt
           : INITIAL_STATE.freeCapsuleReadyAt,
+      sessionStartedAt:
+        typeof parsed.sessionStartedAt === "number" ? parsed.sessionStartedAt : INITIAL_STATE.sessionStartedAt,
+      claimedSessionRewards: Array.isArray(parsed.claimedSessionRewards)
+        ? parsed.claimedSessionRewards.filter(isSessionRewardId)
+        : INITIAL_STATE.claimedSessionRewards,
       onboardingCompleted:
         typeof parsed.onboardingCompleted === "boolean" ? parsed.onboardingCompleted : hasLegacyProgress,
       starterRewardsClaimed:

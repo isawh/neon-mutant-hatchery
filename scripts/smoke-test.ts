@@ -1,13 +1,17 @@
 import {
   ACHIEVEMENTS,
   BREED_COIN_COST,
+  DAILY_LOGIN_REWARDS,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
+  EVENT_ROTATION_INTERVAL_MS,
   HATCH_BASE_COST,
   INITIAL_STATE,
+  RARE_EVENTS,
   RARITY_ALBUM_GOALS,
   RARITY_CONFIG,
   RARITY_ORDER,
+  SESSION_REWARDS,
   STORAGE_KEY,
   TABS,
   TUTORIAL_TASKS,
@@ -101,6 +105,17 @@ const checks: Check[] = [
       assert(INITIAL_STATE.coins >= 0 && INITIAL_STATE.gems >= 0 && INITIAL_STATE.eggs >= 0, "Initial resources invalid");
       assert(TABS.length === 5 && unique(TABS.map((tab) => tab.id)), "Tabs must contain five unique ids");
       assert(TUTORIAL_TASKS.length > 0 && unique(TUTORIAL_TASKS.map((task) => task.id)), "Tutorial task ids invalid");
+      assert(DAILY_LOGIN_REWARDS.length === 7, "Daily login calendar must have seven days");
+      assert(unique(SESSION_REWARDS.map((reward) => reward.id)), "Session reward ids must be unique");
+      assert(EVENT_ROTATION_INTERVAL_MS > 0, "Event rotation interval must be positive");
+      assert(RARE_EVENTS.length >= 4 && unique(RARE_EVENTS.map((event) => event.id)), "Live event ids invalid");
+      SESSION_REWARDS.forEach((reward) => {
+        assert(reward.minutes > 0, `Session reward minutes invalid for ${reward.id}`);
+        assert(hasReward(reward.reward), `Session reward missing for ${reward.id}`);
+      });
+      RARE_EVENTS.forEach((event) => {
+        assert(event.durationMs > 0 && event.durationMs <= EVENT_ROTATION_INTERVAL_MS, `Event duration invalid for ${event.id}`);
+      });
     },
   },
   {

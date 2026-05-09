@@ -345,6 +345,77 @@ p {
   pointer-events: none;
 }
 
+.login-calendar {
+  display: grid;
+  gap: 8px;
+  padding: 9px 12px 0;
+}
+
+.calendar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.calendar-heading strong {
+  color: var(--green);
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.calendar-day {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid rgba(135, 246, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(7, 13, 27, 0.72);
+  box-shadow: inset 0 0 14px rgba(29, 247, 255, 0.03);
+}
+
+.calendar-day span,
+.calendar-day strong {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-day span {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 950;
+}
+
+.calendar-day strong {
+  color: #f7fbff;
+  font-size: 0.56rem;
+}
+
+.calendar-day.active {
+  border-color: rgba(100, 255, 115, 0.5);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(100, 255, 115, 0.18), transparent 60%),
+    rgba(7, 13, 27, 0.92);
+  box-shadow: 0 0 18px rgba(100, 255, 115, 0.12);
+}
+
+.calendar-day.claimed {
+  border-color: rgba(29, 247, 255, 0.26);
+  opacity: 0.9;
+}
+
 .stat-pill {
   position: relative;
   min-width: 0;
@@ -918,6 +989,8 @@ p {
 
 .event-banner,
 .beginner-panel,
+.return-hooks,
+.session-panel,
 .album-panel,
 .achievement-panel,
 .mission-panel,
@@ -1084,9 +1157,179 @@ p {
   align-items: center;
 }
 
+.event-double_hatch_luck {
+  border-color: rgba(247, 240, 90, 0.32);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(247, 240, 90, 0.18), transparent 42%),
+    linear-gradient(145deg, rgba(29, 247, 255, 0.08), rgba(12, 20, 40, 0.96)),
+    rgba(12, 20, 40, 0.96);
+}
+
+.event-mutation_storm {
+  border-color: rgba(255, 79, 216, 0.36);
+  animation: eventPulse 2.2s ease-in-out infinite;
+}
+
+.event-radiant_surge {
+  border-color: rgba(100, 255, 115, 0.34);
+}
+
+.event-secret_hour {
+  border-color: rgba(242, 247, 255, 0.44);
+  box-shadow:
+    0 0 32px rgba(242, 247, 255, 0.14),
+    inset 0 0 24px rgba(255, 79, 216, 0.08);
+}
+
 .event-banner strong {
   color: var(--yellow);
   font-size: 0.88rem;
+}
+
+.return-hooks {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 9px;
+  border-color: rgba(29, 247, 255, 0.18);
+}
+
+.return-hooks div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid rgba(135, 246, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(5, 9, 20, 0.48);
+}
+
+.return-hooks div.ready {
+  border-color: rgba(100, 255, 115, 0.46);
+  box-shadow: 0 0 16px rgba(100, 255, 115, 0.12);
+}
+
+.return-hooks span,
+.return-hooks strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.return-hooks span {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.return-hooks strong {
+  color: #f7fbff;
+  font-size: 0.78rem;
+}
+
+.streak-meter {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(247, 240, 90, 0.2);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(247, 240, 90, 0.1), rgba(29, 247, 255, 0.06)),
+    rgba(5, 7, 19, 0.24);
+}
+
+.streak-meter > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.streak-meter span,
+.streak-meter p {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.streak-meter strong {
+  color: var(--yellow);
+  font-size: 0.86rem;
+}
+
+.streak-meter p {
+  margin: 0;
+  text-transform: none;
+}
+
+.session-panel {
+  border-color: rgba(100, 255, 115, 0.22);
+}
+
+.session-reward-list {
+  display: grid;
+  gap: 8px;
+}
+
+.session-reward {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 9px;
+  border: 1px solid rgba(135, 246, 255, 0.14);
+  border-radius: 8px;
+  color: #f7fbff;
+  text-align: left;
+  background: rgba(7, 13, 27, 0.88);
+}
+
+.session-reward.ready {
+  border-color: rgba(100, 255, 115, 0.48);
+  box-shadow:
+    0 0 22px rgba(100, 255, 115, 0.14),
+    inset 0 0 16px rgba(100, 255, 115, 0.06);
+  animation: claimPulse 1.8s ease-in-out infinite;
+}
+
+.session-reward:disabled {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.session-reward span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-reward span strong,
+.session-reward em,
+.session-reward b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-reward span strong {
+  color: #f7fbff;
+  font-size: 0.8rem;
+}
+
+.session-reward em {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.session-reward b {
+  color: var(--green);
+  font-size: 0.74rem;
+  text-transform: uppercase;
 }
 
 .collection-progress {
@@ -3192,6 +3435,28 @@ p {
 
   50% {
     filter: brightness(1.16);
+  }
+}
+
+@keyframes eventPulse {
+  0%,
+  100% {
+    filter: saturate(1);
+  }
+
+  50% {
+    filter: saturate(1.35) brightness(1.1);
+  }
+}
+
+@keyframes claimPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.01);
   }
 }
 

@@ -30,9 +30,16 @@ export type AchievementId =
   | "invite_3"
   | "invite_10";
 
-export type RareEventId = "glitched_capsule" | "radiant_surge" | "mutation_storm";
+export type RareEventId =
+  | "glitched_capsule"
+  | "double_hatch_luck"
+  | "radiant_surge"
+  | "mutation_storm"
+  | "secret_hour";
 
 export type LimitedOfferId = "premium_capsule" | "double_income" | "lucky_hatch";
+
+export type SessionRewardId = "session_5" | "session_15" | "session_30";
 
 export type ProgressionReward = {
   coins?: number;
@@ -75,6 +82,7 @@ export type ActiveRareEvent = {
   id: RareEventId;
   title: string;
   description: string;
+  startsAt?: number;
   endsAt: number;
 };
 
@@ -105,6 +113,8 @@ export type GameState = {
   premiumCapsules: number;
   creatures: Creature[];
   hatchStreak: number;
+  lastHatchAt: number;
+  hatchStreakExpiresAt: number;
   totalHatches: number;
   totalBreeds: number;
   discoveredCreatureNames: string[];
@@ -126,9 +136,12 @@ export type GameState = {
   luckyBoostUntil: number;
   mutationStormTickets: number;
   lastDailyRewardAt: number;
+  claimedLoginRewardDate: string;
   loginStreak: number;
   lastLoginDate: string;
   freeCapsuleReadyAt: number;
+  sessionStartedAt: number;
+  claimedSessionRewards: SessionRewardId[];
   onboardingCompleted: boolean;
   starterRewardsClaimed: boolean;
   tutorialTasks: TutorialTask[];

@@ -4,6 +4,7 @@ import {
   DEV_SAVE_RESET_VERSION,
   BREED_COIN_COST,
   BREED_GEM_COST,
+  DAILY_LOGIN_REWARDS,
   INITIAL_STATE,
   INVITE_MILESTONES,
   LIMITED_OFFERS,
@@ -27,6 +28,7 @@ import {
   claimFullAlbumReward,
   claimFreeCapsule,
   claimMissionReward,
+  claimSessionReward,
   claimTutorialReward,
   collectTickIncome,
   completeTutorialTask,
@@ -37,9 +39,13 @@ import {
   getRarityAlbumProgress,
   getBoostedIncomePerMinute,
   getCreatureIncomePerMinute,
+  getDailyLoginReward,
   getHatchCost,
+  getHatchStreakLuckBonus,
+  getHatchStreakRemaining,
   getPowerScore,
   getRarityChances,
+  getSessionRewardProgress,
   getTotalIncomePerMinute,
   getUpgradeCost,
   hatchEgg,
@@ -92,7 +98,17 @@ import {
   ensureReferralCode,
   syncReferralStats,
 } from "./services/referralService";
-import type { AchievementId, Creature, GameState, LimitedOfferId, MissionId, Rarity, TabId, TutorialTaskId } from "./types";
+import type {
+  AchievementId,
+  Creature,
+  GameState,
+  LimitedOfferId,
+  MissionId,
+  Rarity,
+  SessionRewardId,
+  TabId,
+  TutorialTaskId,
+} from "./types";
 import "./styles.css";
 
 const formatNumber = (value: number) => Math.floor(value).toLocaleString("en-US");
@@ -530,7 +546,13 @@ export default function App() {
   const boostedIncome = useMemo(() => getBoostedIncomePerMinute(state), [state, now]);
   const hatchCost = useMemo(() => getHatchCost(state), [state]);
   const canClaimDaily = useMemo(() => canClaimDailyReward(state, now), [state, now]);
+  const dailyLoginReward = useMemo(() => getDailyLoginReward(state), [state]);
   const freeCapsuleRemaining = Math.max(0, state.freeCapsuleReadyAt - now);
+  const hatchStreakRemaining = getHatchStreakRemaining(state, now);
+  const hatchLuckBonus = getHatchStreakLuckBonus(state, now);
+  const sessionRewards = useMemo(() => getSessionRewardProgress(state, now), [state, now]);
+  const nextSessionReward = sessionRewards.find((reward) => !reward.claimed);
+  const activeEventRemaining = state.activeEvent?.endsAt ? Math.max(0, state.activeEvent.endsAt - now) : 0;
   const currentTutorialTask = state.tutorialTasks.find((task) => !task.claimed) ?? null;
   const tutorialTaskReady = Boolean(currentTutorialTask?.completed && !currentTutorialTask.claimed);
   const referralLink = useMemo(() => {
@@ -1279,6 +1301,13 @@ export default function App() {
     });
   };
 
+  const handleSessionReward = (rewardId: SessionRewardId) => {
+    spendOrWarn(claimSessionReward(state, rewardId, now), () => {
+      notify("Session reward claimed", "good");
+      haptic.success();
+    });
+  };
+
   const handleLimitedOffer = (offerId: LimitedOfferId) => {
     spendOrWarn(buyLimitedOffer(state, offerId, now), () => {
       notify(LIMITED_OFFERS[offerId].rewardLabel, "good");
@@ -1459,7 +1488,7 @@ export default function App() {
             onClick={handleDailyReward}
           >
             <span>Daily</span>
-            <strong>{canClaimDaily ? "Claim" : `Streak ${state.loginStreak}`}</strong>
+            <strong>{canClaimDaily ? `Day ${dailyLoginReward.day}` : `Streak ${state.loginStreak}`}</strong>
           </button>
           <button className="reward-chip" disabled={freeCapsuleRemaining > 0} onClick={handleFreeCapsule}>
             <span>Free capsule</span>
@@ -1467,9 +1496,15 @@ export default function App() {
           </button>
           <div className="reward-chip passive-chip">
             <span>Hatch streak</span>
-            <strong>{state.hatchStreak}x</strong>
+            <strong>{state.hatchStreak}x · +{hatchLuckBonus.toFixed(1)}%</strong>
           </div>
         </section>
+
+        <DailyLoginCalendar
+          streak={state.loginStreak}
+          claimedToday={!canClaimDaily}
+          activeDay={dailyLoginReward.day}
+        />
 
         <TutorialPanel
           task={currentTutorialTask}
@@ -1498,15 +1533,27 @@ export default function App() {
         {activeTab === "hatch" ? (
           <div className="hatch-screen">
             {state.activeEvent && state.activeEvent.endsAt > now ? (
-              <div className="event-banner">
+              <div className={`event-banner event-${state.activeEvent.id}`}>
                 <div>
-                  <p className="eyebrow">Rare event</p>
+                  <p className="eyebrow">Limited event</p>
                   <h3>{state.activeEvent.title}</h3>
                   <p>{state.activeEvent.description}</p>
                 </div>
-                <strong>{formatDuration(state.activeEvent.endsAt - now)}</strong>
+                <strong>{formatDuration(activeEventRemaining)}</strong>
               </div>
             ) : null}
+            <ReturnHooksPanel
+              dailyReady={canClaimDaily}
+              freeCapsuleRemaining={freeCapsuleRemaining}
+              eventTitle={state.activeEvent?.title ?? "Next event"}
+              eventRemaining={activeEventRemaining}
+              hatchStreak={state.hatchStreak}
+              hatchStreakRemaining={hatchStreakRemaining}
+              sessionRewardTitle={nextSessionReward?.title ?? "Session cleared"}
+              sessionRewardRemaining={
+                nextSessionReward ? Math.max(0, nextSessionReward.requiredMs - nextSessionReward.elapsedMs) : 0
+              }
+            />
             <div className="hatch-layout">
               <div className="hatch-chamber-column">
                 <div
@@ -1570,6 +1617,16 @@ export default function App() {
                       value={state.premiumCapsules > 0 ? "Premium" : `${state.hatchStreak} streak`}
                     />
                   </div>
+                  <div className="streak-meter">
+                    <div>
+                      <span>Streak luck</span>
+                      <strong>+{hatchLuckBonus.toFixed(1)}%</strong>
+                    </div>
+                    <div className="completion-bar">
+                      <i style={{ width: `${Math.min(100, (hatchLuckBonus / 12) * 100)}%` }} />
+                    </div>
+                    <p>{hatchStreakRemaining > 0 ? `${formatDuration(hatchStreakRemaining)} before reset` : "Hatch to start a streak"}</p>
+                  </div>
                   <div className="odds-panel" aria-label="Hatch rarity chances">
                     {getRarityChances(state, state.premiumCapsules > 0).map(({ rarity, chance }) => (
                       <div key={rarity} className={`odds-row ${RARITY_CONFIG[rarity].className}`}>
@@ -1620,6 +1677,7 @@ export default function App() {
                 ) : null}
               </div>
             </div>
+            <SessionRewardsPanel rewards={sessionRewards} onClaim={handleSessionReward} />
             <MissionPanel missions={state.dailyMissions} onClaim={handleMissionClaim} />
           </div>
         ) : null}
@@ -2333,6 +2391,122 @@ function AchievementPanel({
                 </button>
               </div>
             </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DailyLoginCalendar({
+  streak,
+  claimedToday,
+  activeDay,
+}: {
+  streak: number;
+  claimedToday: boolean;
+  activeDay: number;
+}) {
+  return (
+    <section className="login-calendar" aria-label="Daily login calendar">
+      <div className="calendar-heading">
+        <span>Login streak</span>
+        <strong>{streak} day{streak === 1 ? "" : "s"}</strong>
+      </div>
+      <div className="calendar-days">
+        {DAILY_LOGIN_REWARDS.map((item) => {
+          const isActive = item.day === activeDay;
+          const isPast = item.day < activeDay || (isActive && claimedToday);
+          return (
+            <div
+              key={item.day}
+              className={`calendar-day ${isActive ? "active" : ""} ${isPast ? "claimed" : ""}`}
+              title={item.label}
+            >
+              <span>D{item.day}</span>
+              <strong>{item.day === 7 ? "Jackpot" : formatReward(item.reward)}</strong>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ReturnHooksPanel({
+  dailyReady,
+  freeCapsuleRemaining,
+  eventTitle,
+  eventRemaining,
+  hatchStreak,
+  hatchStreakRemaining,
+  sessionRewardTitle,
+  sessionRewardRemaining,
+}: {
+  dailyReady: boolean;
+  freeCapsuleRemaining: number;
+  eventTitle: string;
+  eventRemaining: number;
+  hatchStreak: number;
+  hatchStreakRemaining: number;
+  sessionRewardTitle: string;
+  sessionRewardRemaining: number;
+}) {
+  const hooks = [
+    { label: "Daily reward", value: dailyReady ? "Ready" : "Claimed" },
+    { label: "Free capsule", value: formatDuration(freeCapsuleRemaining) },
+    { label: eventTitle, value: eventRemaining > 0 ? formatDuration(eventRemaining) : "Cooling" },
+    { label: "Hatch streak", value: hatchStreak > 0 ? `${hatchStreak}x · ${formatDuration(hatchStreakRemaining)}` : "Inactive" },
+    { label: sessionRewardTitle, value: sessionRewardRemaining > 0 ? formatDuration(sessionRewardRemaining) : "Ready" },
+  ];
+
+  return (
+    <section className="return-hooks" aria-label="Return timers">
+      {hooks.map((hook) => (
+        <div key={hook.label} className={hook.value === "Ready" ? "ready" : ""}>
+          <span>{hook.label}</span>
+          <strong>{hook.value}</strong>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function SessionRewardsPanel({
+  rewards,
+  onClaim,
+}: {
+  rewards: ReturnType<typeof getSessionRewardProgress>;
+  onClaim: (rewardId: SessionRewardId) => void;
+}) {
+  return (
+    <section className="session-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Session rewards</p>
+          <h2>Stay in the lab</h2>
+        </div>
+        <span>{rewards.filter((reward) => reward.ready && !reward.claimed).length} ready</span>
+      </div>
+      <div className="session-reward-list">
+        {rewards.map((reward) => {
+          const ready = reward.ready && !reward.claimed;
+          return (
+            <button
+              key={reward.id}
+              className={`session-reward ${ready ? "ready" : ""}`}
+              disabled={!ready}
+              onClick={() => onClaim(reward.id)}
+            >
+              <span>
+                <strong>{reward.title}</strong>
+                <em>{formatReward(reward.reward)}</em>
+              </span>
+              <div className="completion-bar">
+                <i style={{ width: `${Math.round(reward.progress * 100)}%` }} />
+              </div>
+              <b>{reward.claimed ? "Claimed" : ready ? "Claim" : formatDuration(reward.requiredMs - reward.elapsedMs)}</b>
+            </button>
           );
         })}
       </div>

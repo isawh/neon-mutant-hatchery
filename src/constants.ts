@@ -6,6 +6,7 @@ import type {
   MissionId,
   PassiveTrait,
   Rarity,
+  SessionRewardId,
   TabId,
   TutorialTask,
 } from "./types";
@@ -23,6 +24,8 @@ export const INITIAL_STATE: GameState = {
   premiumCapsules: 0,
   creatures: [],
   hatchStreak: 0,
+  lastHatchAt: 0,
+  hatchStreakExpiresAt: 0,
   totalHatches: 0,
   totalBreeds: 0,
   discoveredCreatureNames: [],
@@ -44,9 +47,12 @@ export const INITIAL_STATE: GameState = {
   luckyBoostUntil: 0,
   mutationStormTickets: 0,
   lastDailyRewardAt: 0,
+  claimedLoginRewardDate: "",
   loginStreak: 1,
   lastLoginDate: "",
   freeCapsuleReadyAt: Date.now() + 10 * 60 * 1000,
+  sessionStartedAt: Date.now(),
+  claimedSessionRewards: [],
   onboardingCompleted: false,
   starterRewardsClaimed: false,
   tutorialTasks: [],
@@ -200,11 +206,36 @@ export const BREED_GEM_COST = 1;
 
 export const FREE_CAPSULE_COOLDOWN_MS = 20 * 60 * 1000;
 
-export const DAILY_REWARD = {
-  coins: 90,
-  gems: 1,
-  eggs: 1,
-};
+export const HATCH_STREAK_TIMEOUT_MS = 30 * 60 * 1000;
+
+export const HATCH_STREAK_LUCK_PER_HATCH = 0.55;
+
+export const HATCH_STREAK_MAX_LUCK = 12;
+
+export const EVENT_ROTATION_INTERVAL_MS = 45 * 60 * 1000;
+
+export const DAILY_LOGIN_REWARDS = [
+  { day: 1, reward: { coins: 90, eggs: 1 }, label: "90 coins + capsule" },
+  { day: 2, reward: { coins: 140, gems: 1 }, label: "140 coins + gem" },
+  { day: 3, reward: { coins: 190, eggs: 2 }, label: "190 coins + 2 capsules" },
+  { day: 4, reward: { coins: 260, gems: 2 }, label: "260 coins + 2 gems" },
+  { day: 5, reward: { coins: 340, premiumCapsules: 1 }, label: "340 coins + premium" },
+  { day: 6, reward: { coins: 450, gems: 4, luckyBoostMinutes: 30 }, label: "450 coins + 30m luck" },
+  { day: 7, reward: { gems: 8, premiumCapsules: 2, incomeBoostMinutes: 60 }, label: "Day 7 neon jackpot" },
+] as const;
+
+export const DAILY_REWARD = DAILY_LOGIN_REWARDS[0].reward;
+
+export const SESSION_REWARDS: Array<{
+  id: SessionRewardId;
+  minutes: number;
+  title: string;
+  reward: { coins?: number; gems?: number; eggs?: number; premiumCapsules?: number; incomeBoostMinutes?: number; luckyBoostMinutes?: number };
+}> = [
+  { id: "session_5", minutes: 5, title: "5 minute lab check", reward: { gems: 1, eggs: 1 } },
+  { id: "session_15", minutes: 15, title: "15 minute surge", reward: { gems: 2, premiumCapsules: 1 } },
+  { id: "session_30", minutes: 30, title: "30 minute deep run", reward: { gems: 4, eggs: 3, luckyBoostMinutes: 20 } },
+];
 
 export const STARTER_REWARD = {
   eggs: 3,
@@ -475,22 +506,28 @@ export const DAILY_MISSION_POOL: Record<MissionId, Omit<DailyMission, "progress"
 
 export const RARE_EVENTS = [
   {
-    id: "glitched_capsule",
-    title: "Glitched Capsule",
-    description: "Premium and normal hatches get a rare-chance spike.",
-    durationMs: 12 * 60 * 1000,
+    id: "double_hatch_luck",
+    title: "Double Hatch Luck",
+    description: "Hatch streak luck counts double while the lab is hot.",
+    durationMs: 25 * 60 * 1000,
   },
   {
     id: "radiant_surge",
     title: "Radiant Surge",
     description: "Idle income is doubled for a short lab surge.",
-    durationMs: 15 * 60 * 1000,
+    durationMs: 22 * 60 * 1000,
   },
   {
     id: "mutation_storm",
     title: "Mutation Storm",
     description: "Epic+ odds and mission rewards feel extra charged.",
-    durationMs: 10 * 60 * 1000,
+    durationMs: 20 * 60 * 1000,
+  },
+  {
+    id: "secret_hour",
+    title: "Secret Hour",
+    description: "Secret rarity odds get a tiny unstable spike.",
+    durationMs: 15 * 60 * 1000,
   },
 ] as const;
 
