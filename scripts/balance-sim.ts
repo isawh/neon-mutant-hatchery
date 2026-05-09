@@ -34,12 +34,21 @@ type SimState = {
 const RARITY_ORDER: Rarity[] = ["Common", "Rare", "Epic", "Legendary", "Mythic", "Secret"];
 
 const RARITY_CONFIG: Record<Rarity, { chance: number; minIncome: number; maxIncome: number }> = {
-  Common: { chance: 61.95, minIncome: 7, maxIncome: 10 },
-  Rare: { chance: 24, minIncome: 12, maxIncome: 18 },
-  Epic: { chance: 10, minIncome: 24, maxIncome: 36 },
-  Legendary: { chance: 3.5, minIncome: 46, maxIncome: 72 },
-  Mythic: { chance: 0.5, minIncome: 92, maxIncome: 140 },
-  Secret: { chance: 0.05, minIncome: 220, maxIncome: 320 },
+  Common: { chance: 72, minIncome: 7, maxIncome: 10 },
+  Rare: { chance: 22, minIncome: 12, maxIncome: 18 },
+  Epic: { chance: 5, minIncome: 24, maxIncome: 36 },
+  Legendary: { chance: 0.8, minIncome: 46, maxIncome: 72 },
+  Mythic: { chance: 0.18, minIncome: 92, maxIncome: 140 },
+  Secret: { chance: 0.02, minIncome: 220, maxIncome: 320 },
+};
+
+const PREMIUM_RARITY_CHANCES: Record<Rarity, number> = {
+  Common: 45,
+  Rare: 35,
+  Epic: 15,
+  Legendary: 4,
+  Mythic: 0.9,
+  Secret: 0.1,
 };
 
 const PASSIVE_MULTIPLIERS = [1.08, 1.14, 1.22, 1.3, 1.45];
@@ -81,22 +90,11 @@ const getIncome = (creature: Creature) => Math.round(creature.incomePerMinute * 
 const totalIncome = (state: SimState) => state.creatures.reduce((sum, creature) => sum + getIncome(creature), 0);
 
 const getRarityChances = (premium: boolean) => {
-  const bonus = premium ? 8 : 0;
-  const weights = RARITY_ORDER.map((rarity) => {
-    const rank = RARITY_ORDER.indexOf(rarity);
-    if (rarity === "Secret") {
-      return Math.min(0.35, RARITY_CONFIG[rarity].chance + bonus * 0.012);
-    }
-    if (rank === 0) {
-      return Math.max(20, RARITY_CONFIG[rarity].chance - bonus * 1.9);
-    }
-    if (rank === 1) {
-      return RARITY_CONFIG[rarity].chance + bonus * 0.75;
-    }
-    return RARITY_CONFIG[rarity].chance + bonus * (rank * 0.42);
-  });
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  return RARITY_ORDER.map((rarity, index) => ({ rarity, chance: (weights[index] / total) * 100 }));
+  const source = premium ? PREMIUM_RARITY_CHANCES : RARITY_CONFIG;
+  return RARITY_ORDER.map((rarity) => ({
+    rarity,
+    chance: premium ? (source as Record<Rarity, number>)[rarity] : RARITY_CONFIG[rarity].chance,
+  }));
 };
 
 const pickRarity = (rng: () => number, premium: boolean): Rarity => {

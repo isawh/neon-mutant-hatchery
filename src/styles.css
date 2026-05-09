@@ -1909,6 +1909,41 @@ p {
   z-index: 2;
 }
 
+.creature-body::before,
+.creature-body::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.creature-body::before {
+  inset: 16% 14%;
+  border-radius: inherit;
+  opacity: 0.38;
+}
+
+.creature-body::after {
+  inset: auto 22% 14%;
+  height: 14%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  filter: blur(8px);
+  opacity: 0.42;
+}
+
+.body-blob .creature-body { border-radius: 58% 42% 48% 52% / 46% 56% 44% 54%; }
+.body-beetle .creature-body { inset: 18% 17% 17%; border-radius: 48% 52% 38% 62% / 42% 42% 58% 58%; }
+.body-slug .creature-body { inset: 30% 10% 18%; border-radius: 68% 32% 56% 44% / 58% 48% 52% 42%; }
+.body-mantis .creature-body { inset: 20% 20% 18%; border-radius: 44% 56% 40% 60% / 35% 52% 48% 65%; transform: skewX(-5deg); }
+.body-drake .creature-body { inset: 16% 15% 20%; border-radius: 64% 36% 42% 58% / 48% 62% 38% 52%; }
+.body-crab .creature-body { inset: 28% 9% 20%; border-radius: 38% 62% 46% 54% / 44% 44% 56% 56%; }
+.body-manta .creature-body { inset: 26% 8% 22%; border-radius: 72% 28% 70% 30% / 44% 44% 56% 56%; }
+.body-spider .creature-body { inset: 22% 20% 18%; border-radius: 50%; }
+.body-sprout .creature-body { inset: 20% 18% 18%; border-radius: 50% 50% 44% 44% / 64% 64% 36% 36%; }
+.body-orb .creature-body { inset: 20%; border-radius: 50%; }
+.body-wyrm .creature-body { inset: 14% 22% 12%; border-radius: 999px; }
+.body-crystal .creature-body { inset: 18% 18% 18%; border-radius: 18% 44% 22% 42%; clip-path: polygon(50% 0, 92% 28%, 78% 92%, 22% 92%, 8% 28%); }
+
 .creature-eye {
   position: absolute;
   top: 35%;
@@ -1920,6 +1955,21 @@ p {
     0 0 10px var(--eye),
     0 0 18px color-mix(in srgb, var(--eye), transparent 34%);
 }
+
+.eyes-slit .creature-eye { height: 5%; aspect-ratio: 2.6; border-radius: 999px; }
+.eyes-visor .creature-eye-left { left: 28%; width: 44%; aspect-ratio: 4.8; border-radius: 999px; }
+.eyes-visor .creature-eye-right { display: none; }
+.eyes-triple .creature-eye { width: 10%; }
+.eyes-triple .creature-body::after { left: 45%; right: auto; top: 34%; bottom: auto; width: 10%; height: 10%; background: var(--eye); filter: none; box-shadow: 0 0 10px var(--eye); opacity: 1; }
+.eyes-mono .creature-eye-left { left: 43%; width: 16%; }
+.eyes-mono .creature-eye-right { display: none; }
+.eyes-wide .creature-eye { width: 18%; }
+.eyes-diamond .creature-eye { border-radius: 20%; transform: rotate(45deg); }
+.eyes-sleepy .creature-eye { height: 5%; aspect-ratio: 2.2; border-radius: 999px; opacity: 0.88; }
+.eyes-spark .creature-eye { clip-path: polygon(50% 0, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0 50%, 35% 35%); border-radius: 0; }
+.eyes-void .creature-eye { background: #050713; border: 1px solid var(--eye); }
+.eyes-ring .creature-eye { background: transparent; border: 2px solid var(--eye); }
+.eyes-glitch .creature-eye { box-shadow: 2px 0 0 var(--pink), -2px 0 0 var(--cyan), 0 0 12px var(--eye); }
 
 .creature-eye-left {
   left: 30%;
@@ -1994,6 +2044,17 @@ p {
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
+.horns-none .creature-horn { display: none; }
+.horns-short .creature-horn { height: 20%; }
+.horns-long .creature-horn { top: 4%; height: 38%; }
+.horns-curved .creature-horn { border-radius: 90% 10% 80% 20%; clip-path: none; }
+.horns-antenna .creature-horn { width: 4%; height: 34%; border-radius: 999px; clip-path: none; }
+.horns-forked .creature-horn { clip-path: polygon(50% 0, 72% 44%, 100% 100%, 50% 76%, 0 100%, 28% 44%); }
+.horns-halo .creature-horn { top: 9%; width: 24%; height: 8%; border: 2px solid var(--accent); border-radius: 50%; background: transparent; clip-path: none; }
+.horns-spikes .creature-horn { width: 18%; height: 22%; clip-path: polygon(50% 0, 62% 62%, 100% 100%, 50% 80%, 0 100%, 38% 62%); }
+.horns-fin .creature-horn { width: 12%; height: 32%; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.horns-crown .creature-horn { top: 10%; width: 20%; height: 20%; clip-path: polygon(0 100%, 18% 25%, 42% 82%, 50% 0, 58% 82%, 82% 25%, 100% 100%); }
+
 .creature-horn-left {
   left: 27%;
   transform: rotate(-22deg);
@@ -2028,6 +2089,49 @@ p {
   transform: rotate(-18deg);
   animation-delay: 320ms;
 }
+
+.pattern-spots .creature-body::before { background: radial-gradient(circle at 25% 28%, var(--accent) 0 10%, transparent 11%), radial-gradient(circle at 70% 62%, var(--glow) 0 8%, transparent 9%); }
+.pattern-stripes .creature-body::before { background: repeating-linear-gradient(90deg, transparent 0 12%, color-mix(in srgb, var(--accent), transparent 30%) 12% 18%); }
+.pattern-ridges .creature-body::before { background: repeating-linear-gradient(105deg, transparent 0 11%, rgba(255, 255, 255, 0.28) 11% 14%); }
+.pattern-veins .creature-body::before { background: linear-gradient(45deg, transparent 44%, var(--glow) 45% 48%, transparent 49%), linear-gradient(125deg, transparent 42%, var(--accent) 43% 46%, transparent 47%); opacity: 0.3; }
+.pattern-scales .creature-body::before { background: radial-gradient(circle at 20% 40%, rgba(255,255,255,0.26) 0 12%, transparent 13%) 0 0 / 20px 20px; }
+.pattern-rings .creature-body::before { border: 2px solid color-mix(in srgb, var(--accent), transparent 20%); box-shadow: inset 0 0 0 8px rgba(255,255,255,0.06); }
+.pattern-chevrons .creature-body::before { background: repeating-linear-gradient(135deg, transparent 0 12%, rgba(255,255,255,0.24) 12% 16%); }
+.pattern-cells .creature-body::before { background: radial-gradient(circle, rgba(255,255,255,0.22) 0 22%, transparent 23%) 0 0 / 18px 18px; }
+.pattern-stars .creature-body::before { background: radial-gradient(circle at 28% 32%, #fff 0 4%, transparent 5%), radial-gradient(circle at 72% 54%, #fff 0 3%, transparent 4%); }
+.pattern-circuit .creature-body::before { background: linear-gradient(90deg, transparent 45%, var(--glow) 46% 49%, transparent 50%), linear-gradient(0deg, transparent 55%, var(--accent) 56% 59%, transparent 60%); opacity: 0.32; }
+.pattern-cracks .creature-body::before { background: linear-gradient(60deg, transparent 48%, rgba(255,255,255,0.42) 49% 51%, transparent 52%), linear-gradient(130deg, transparent 38%, rgba(255,255,255,0.32) 39% 41%, transparent 42%); }
+.pattern-none .creature-body::before { display: none; }
+
+.aura-ring .creature-aura { background: radial-gradient(circle, transparent 42%, var(--glow) 44% 58%, transparent 62%); }
+.aura-flare .creature-aura { border-radius: 30% 70% 40% 60%; opacity: 0.44; }
+.aura-mist .creature-aura { filter: blur(30px); opacity: 0.34; }
+.aura-pulse .creature-aura { animation-duration: 1.4s; }
+.aura-static .creature-aura { background: repeating-radial-gradient(circle, var(--glow) 0 2px, transparent 2px 8px); }
+.aura-radial .creature-aura { background: conic-gradient(from 0deg, transparent, var(--glow), transparent, var(--accent), transparent); }
+.aura-comet .creature-aura { border-radius: 65% 35% 70% 30%; transform: rotate(-18deg); }
+.aura-halo .creature-aura { inset: 10% 6% 28%; border: 2px solid var(--glow); background: transparent; filter: blur(5px); }
+.aura-glitch .creature-aura { box-shadow: 3px 0 0 var(--pink), -3px 0 0 var(--cyan); animation: secretAura 1.1s steps(2, end) infinite; }
+
+.mutation-spark .creature-particles,
+.mutation-orbit .creature-particles,
+.mutation-scan .creature-particles,
+.mutation-shimmer .creature-particles,
+.mutation-glitch .creature-particles,
+.mutation-flare .creature-particles,
+.mutation-ripple .creature-particles {
+  display: block;
+}
+
+.mutation-drip .creature-tentacle { height: 36%; border-radius: 30% 30% 80% 80%; }
+.mutation-smoke .creature-aura { filter: blur(34px); opacity: 0.36; }
+.mutation-orbit .creature-particles span { animation: particleDrift 1.6s linear infinite; }
+.mutation-scan .creature-body::before { background: linear-gradient(180deg, transparent, rgba(255,255,255,0.32), transparent); animation: scan 2.8s linear infinite; }
+.mutation-shimmer .creature-body { animation: legendaryBody 2.8s ease-in-out infinite; }
+.mutation-glitch .creature-body { box-shadow: 2px 0 0 var(--pink), -2px 0 0 var(--cyan), 0 0 24px var(--glow); }
+.mutation-flare .creature-aura { opacity: 0.58; }
+.mutation-dust .creature-particles { display: block; opacity: 0.5; }
+.mutation-ripple .creature-aura-outer { opacity: 0.28; background: radial-gradient(circle, transparent 38%, var(--glow) 40% 42%, transparent 48%); }
 
 .creature-particles {
   position: absolute;
@@ -2074,6 +2178,15 @@ p {
   opacity: 0.42;
 }
 
+.creature-common .creature-aura {
+  opacity: 0.18;
+}
+
+.creature-common .creature-aura-outer,
+.creature-common .creature-particles {
+  display: none;
+}
+
 .creature-rare .creature-body {
   box-shadow:
     0 0 28px color-mix(in srgb, var(--glow), transparent 28%),
@@ -2111,6 +2224,15 @@ p {
   animation: legendaryBody 3.4s ease-in-out infinite;
 }
 
+.creature-legendary .creature-horn {
+  top: 5%;
+  filter: saturate(1.35) brightness(1.12);
+}
+
+.creature-legendary .creature-tentacle {
+  box-shadow: 0 0 18px var(--glow);
+}
+
 .creature-mythic .creature-aura,
 .creature-mythic .creature-aura-outer {
   opacity: 0.6;
@@ -2124,6 +2246,12 @@ p {
     linear-gradient(135deg, var(--body), var(--accent), var(--glow), var(--body));
   background-size: 220% 220%;
   animation: mythicGradient 2.2s linear infinite;
+}
+
+.creature-mythic .creature-horn,
+.creature-mythic .creature-tentacle {
+  background: linear-gradient(180deg, #ffffff, var(--accent), var(--glow));
+  animation: mythicGradient 2.4s linear infinite;
 }
 
 .creature-secret .creature-aura,
@@ -2151,6 +2279,22 @@ p {
     2px 0 0 rgba(255, 79, 216, 0.7),
     -2px 0 0 rgba(29, 247, 255, 0.7),
     0 0 34px rgba(255, 255, 255, 0.58);
+}
+
+.creature-secret::before {
+  content: "";
+  position: absolute;
+  inset: 5%;
+  z-index: 4;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 18px;
+  box-shadow:
+    2px 0 0 rgba(255, 79, 216, 0.7),
+    -2px 0 0 rgba(29, 247, 255, 0.7),
+    0 0 22px rgba(255, 255, 255, 0.24);
+  opacity: 0.72;
+  pointer-events: none;
+  animation: secretBodyGlitch 900ms steps(2, end) infinite;
 }
 
 .reveal-fast {

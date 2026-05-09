@@ -1,28 +1,38 @@
 import {
   ACHIEVEMENTS,
+  AURA_STYLES,
+  BODY_SHAPES,
   FULL_COLLECTION_REWARD,
   RARITY_ALBUM_GOALS,
   DAILY_MISSION_POOL,
   DAILY_LOGIN_REWARDS,
   BREED_COIN_COST,
   BREED_GEM_COST,
+  EYE_TYPES,
   EVENT_ROTATION_INTERVAL_MS,
   FREE_CAPSULE_COOLDOWN_MS,
   HATCH_BASE_COST,
   HATCH_STREAK_LUCK_PER_HATCH,
   HATCH_STREAK_MAX_LUCK,
   HATCH_STREAK_TIMEOUT_MS,
+  HORN_TYPES,
   LIMITED_OFFERS,
   MAX_OFFLINE_MS,
+  MUTATION_EFFECTS,
   NAME_PREFIXES,
   NAME_SUFFIXES,
   PALETTE,
   PASSIVE_TRAIT_CONFIG,
   PASSIVE_TRAITS,
+  PATTERN_STYLES,
+  PREMIUM_RARITY_CHANCES,
   RARE_EVENTS,
+  RARITY_CHANCE_CAPS,
   RARITY_CONFIG,
+  RARITY_NAME_TITLES,
   RARITY_ORDER,
   SESSION_REWARDS,
+  SECRET_NAME_CORES,
   STARTER_REWARD,
   TRAITS,
   TUTORIAL_TASKS,
@@ -392,7 +402,6 @@ export const getRarityChances = (state?: GameState, premium = false) => {
   const now = Date.now();
   const hatchStreakBonus = state ? getHatchStreakLuckBonus(state, now) : 0;
   const bonus =
-    (premium ? 8 : 0) +
     (state?.rareChanceBonus ?? 0) +
     hatchStreakBonus +
     (state?.luckyBoostUntil && state.luckyBoostUntil > now ? 6 : 0) +
@@ -400,24 +409,32 @@ export const getRarityChances = (state?: GameState, premium = false) => {
     (state?.activeEvent?.id === "mutation_storm" && state.activeEvent.endsAt > now ? 10 : 0) +
     (state?.activeEvent?.id === "secret_hour" && state.activeEvent.endsAt > now ? 4 : 0);
 
-  const weights = RARITY_ORDER.map((rarity) => {
-    const rank = RARITY_ORDER.indexOf(rarity);
-    if (rarity === "Secret") {
-      return Math.min(0.35, RARITY_CONFIG[rarity].chance + bonus * 0.012);
-    }
-    if (rank === 0) {
-      return Math.max(20, RARITY_CONFIG[rarity].chance - bonus * 1.9);
-    }
-    if (rank === 1) {
-      return RARITY_CONFIG[rarity].chance + bonus * 0.75;
-    }
-    return RARITY_CONFIG[rarity].chance + bonus * (rank * 0.42);
-  });
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  const base = premium
+    ? PREMIUM_RARITY_CHANCES
+    : RARITY_ORDER.reduce(
+        (record, rarity) => ({ ...record, [rarity]: RARITY_CONFIG[rarity].chance }),
+        {} as Record<Rarity, number>,
+      );
 
-  return RARITY_ORDER.map((rarity, index) => ({
+  const boosted: Record<Rarity, number> = {
+    Common: base.Common,
+    Rare: base.Rare + bonus * 0.42,
+    Epic: base.Epic + bonus * 0.16,
+    Legendary: Math.min(RARITY_CHANCE_CAPS.Legendary ?? base.Legendary, base.Legendary + bonus * 0.035),
+    Mythic: Math.min(RARITY_CHANCE_CAPS.Mythic ?? base.Mythic, base.Mythic + bonus * 0.007),
+    Secret: Math.min(RARITY_CHANCE_CAPS.Secret ?? base.Secret, base.Secret + bonus * 0.001),
+  };
+
+  const rareTotal = RARITY_ORDER.filter((rarity) => rarity !== "Common").reduce(
+    (sum, rarity) => sum + boosted[rarity],
+    0,
+  );
+  boosted.Common = Math.max(0, 100 - rareTotal);
+  const total = RARITY_ORDER.reduce((sum, rarity) => sum + boosted[rarity], 0);
+
+  return RARITY_ORDER.map((rarity) => ({
     rarity,
-    chance: Number(((weights[index] / total) * 100).toFixed(1)),
+    chance: Number(((boosted[rarity] / total) * 100).toFixed(rarity === "Secret" ? 2 : 1)),
   }));
 };
 
@@ -467,6 +484,46 @@ const pickPassiveTraits = (rarity: Rarity, inheritedTraits: PassiveTrait[]) => {
   return Array.from(traits);
 };
 
+const pickVisualDna = (rarity: Rarity, parents: Creature[]) => {
+  const inherited = parents.map((parent) => parent.visualDna).filter(Boolean);
+  const inherit = <T,>(items: T[], getter: (dna: NonNullable<Creature["visualDna"]>) => T) =>
+    inherited.length && Math.random() > 0.42 ? getter(sample(inherited)) : sample(items);
+
+  const rarityRankValue = RARITY_ORDER.indexOf(rarity);
+  return {
+    bodyShape: inherit(BODY_SHAPES, (dna) => dna.bodyShape),
+    eyeType: inherit(EYE_TYPES, (dna) => dna.eyeType),
+    hornType:
+      rarityRankValue >= 3
+        ? sample(HORN_TYPES.filter((type) => type !== "none"))
+        : inherit(HORN_TYPES, (dna) => dna.hornType),
+    auraStyle:
+      rarity === "Secret"
+        ? "glitch"
+        : rarityRankValue >= 4
+          ? sample(["flare", "halo", "comet", "radial", "pulse"])
+          : inherit(AURA_STYLES, (dna) => dna.auraStyle),
+    patternStyle:
+      rarityRankValue >= 2
+        ? sample(PATTERN_STYLES.filter((type) => type !== "none"))
+        : inherit(PATTERN_STYLES, (dna) => dna.patternStyle),
+    mutationEffect:
+      rarity === "Secret"
+        ? "glitch"
+        : rarityRankValue >= 3
+          ? sample(["spark", "orbit", "scan", "shimmer", "flare", "ripple"])
+          : inherit(MUTATION_EFFECTS, (dna) => dna.mutationEffect),
+  };
+};
+
+const createCreatureName = (rarity: Rarity) => {
+  if (rarity === "Secret") {
+    return `${sample(RARITY_NAME_TITLES.Secret)} ${sample(SECRET_NAME_CORES)}-${randomInt(10, 99)}`;
+  }
+  const title = sample(RARITY_NAME_TITLES[rarity]);
+  return `${title} ${sample(NAME_PREFIXES)}-${sample(NAME_SUFFIXES)}`;
+};
+
 export const createRandomCreature = (
   generation = 1,
   parents: Creature[] = [],
@@ -500,7 +557,7 @@ export const createRandomCreature = (
   ).slice(0, rarity === "Common" ? 2 : 3);
 
   const passiveTraits = pickPassiveTraits(rarity, parentPassiveTraits);
-  const name = `${sample(NAME_PREFIXES)}-${sample(NAME_SUFFIXES)}`;
+  const name = createCreatureName(rarity);
   const creature: Creature = {
     id: createId(),
     name,
@@ -513,6 +570,7 @@ export const createRandomCreature = (
     powerScore: 0,
     isNew: !knownNames.includes(name),
     colors: { body, accent, glow, eye },
+    visualDna: pickVisualDna(rarity, parents),
     createdAt: Date.now(),
   };
 

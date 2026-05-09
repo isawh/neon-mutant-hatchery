@@ -1,13 +1,21 @@
 import {
   ACHIEVEMENTS,
+  AURA_STYLES,
+  BODY_SHAPES,
   BREED_COIN_COST,
   DAILY_LOGIN_REWARDS,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
+  EYE_TYPES,
   EVENT_ROTATION_INTERVAL_MS,
   HATCH_BASE_COST,
+  HORN_TYPES,
   INITIAL_STATE,
+  MUTATION_EFFECTS,
+  PATTERN_STYLES,
+  PREMIUM_RARITY_CHANCES,
   RARE_EVENTS,
+  RARITY_CHANCE_CAPS,
   RARITY_ALBUM_GOALS,
   RARITY_CONFIG,
   RARITY_ORDER,
@@ -109,6 +117,12 @@ const checks: Check[] = [
       assert(unique(SESSION_REWARDS.map((reward) => reward.id)), "Session reward ids must be unique");
       assert(EVENT_ROTATION_INTERVAL_MS > 0, "Event rotation interval must be positive");
       assert(RARE_EVENTS.length >= 4 && unique(RARE_EVENTS.map((event) => event.id)), "Live event ids invalid");
+      assert(BODY_SHAPES.length >= 12 && unique(BODY_SHAPES), "Body shape variety invalid");
+      assert(EYE_TYPES.length >= 12 && unique(EYE_TYPES), "Eye type variety invalid");
+      assert(HORN_TYPES.length >= 10 && unique(HORN_TYPES), "Horn type variety invalid");
+      assert(AURA_STYLES.length >= 10 && unique(AURA_STYLES), "Aura style variety invalid");
+      assert(PATTERN_STYLES.length >= 12 && unique(PATTERN_STYLES), "Pattern style variety invalid");
+      assert(MUTATION_EFFECTS.length >= 10 && unique(MUTATION_EFFECTS), "Mutation effect variety invalid");
       SESSION_REWARDS.forEach((reward) => {
         assert(reward.minutes > 0, `Session reward minutes invalid for ${reward.id}`);
         assert(hasReward(reward.reward), `Session reward missing for ${reward.id}`);
@@ -122,7 +136,21 @@ const checks: Check[] = [
     name: "rarity odds sum correctly",
     run: () => {
       const totalChance = RARITY_ORDER.reduce((sum, rarity) => sum + RARITY_CONFIG[rarity].chance, 0);
+      const premiumTotalChance = RARITY_ORDER.reduce((sum, rarity) => sum + PREMIUM_RARITY_CHANCES[rarity], 0);
       assert(Math.abs(totalChance - 100) < 0.001, `Rarity odds must sum to 100, got ${totalChance}`);
+      assert(
+        Math.abs(premiumTotalChance - 100) < 0.001,
+        `Premium rarity odds must sum to 100, got ${premiumTotalChance}`,
+      );
+      assert(RARITY_CONFIG.Common.chance === 72, "Common base odds must be 72%");
+      assert(RARITY_CONFIG.Rare.chance === 22, "Rare base odds must be 22%");
+      assert(RARITY_CONFIG.Epic.chance === 5, "Epic base odds must be 5%");
+      assert(RARITY_CONFIG.Legendary.chance === 0.8, "Legendary base odds must be 0.8%");
+      assert(RARITY_CONFIG.Mythic.chance === 0.18, "Mythic base odds must be 0.18%");
+      assert(RARITY_CONFIG.Secret.chance === 0.02, "Secret base odds must be 0.02%");
+      assert(RARITY_CHANCE_CAPS.Legendary === 6, "Legendary odds cap must be 6%");
+      assert(RARITY_CHANCE_CAPS.Mythic === 1.5, "Mythic odds cap must be 1.5%");
+      assert(RARITY_CHANCE_CAPS.Secret === 0.2, "Secret odds cap must be 0.2%");
       RARITY_ORDER.forEach((rarity) => {
         const config = RARITY_CONFIG[rarity];
         assert(config.minIncome > 0 && config.maxIncome >= config.minIncome, `Invalid income range for ${rarity}`);

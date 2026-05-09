@@ -86,6 +86,15 @@ export type ActiveRareEvent = {
   endsAt: number;
 };
 
+export type CreatureVisualDna = {
+  bodyShape: string;
+  eyeType: string;
+  hornType: string;
+  auraStyle: string;
+  patternStyle: string;
+  mutationEffect: string;
+};
+
 export type Creature = {
   id: string;
   name: string;
@@ -103,6 +112,7 @@ export type Creature = {
     glow: string;
     eye: string;
   };
+  visualDna: CreatureVisualDna;
   createdAt: number;
 };
 

@@ -95,12 +95,27 @@ export const RARITY_CONFIG: Record<
   Rarity,
   { chance: number; minIncome: number; maxIncome: number; className: string }
 > = {
-  Common: { chance: 61.95, minIncome: 7, maxIncome: 10, className: "rarity-common" },
-  Rare: { chance: 24, minIncome: 12, maxIncome: 18, className: "rarity-rare" },
-  Epic: { chance: 10, minIncome: 24, maxIncome: 36, className: "rarity-epic" },
-  Legendary: { chance: 3.5, minIncome: 46, maxIncome: 72, className: "rarity-legendary" },
-  Mythic: { chance: 0.5, minIncome: 92, maxIncome: 140, className: "rarity-mythic" },
-  Secret: { chance: 0.05, minIncome: 220, maxIncome: 320, className: "rarity-secret" },
+  Common: { chance: 72, minIncome: 7, maxIncome: 10, className: "rarity-common" },
+  Rare: { chance: 22, minIncome: 12, maxIncome: 18, className: "rarity-rare" },
+  Epic: { chance: 5, minIncome: 24, maxIncome: 36, className: "rarity-epic" },
+  Legendary: { chance: 0.8, minIncome: 46, maxIncome: 72, className: "rarity-legendary" },
+  Mythic: { chance: 0.18, minIncome: 92, maxIncome: 140, className: "rarity-mythic" },
+  Secret: { chance: 0.02, minIncome: 220, maxIncome: 320, className: "rarity-secret" },
+};
+
+export const PREMIUM_RARITY_CHANCES: Record<Rarity, number> = {
+  Common: 45,
+  Rare: 35,
+  Epic: 15,
+  Legendary: 4,
+  Mythic: 0.9,
+  Secret: 0.1,
+};
+
+export const RARITY_CHANCE_CAPS: Partial<Record<Rarity, number>> = {
+  Legendary: 6,
+  Mythic: 1.5,
+  Secret: 0.2,
 };
 
 export const TRAITS = [
@@ -116,6 +131,102 @@ export const TRAITS = [
   "Pulse Antenna",
   "Cryo Veins",
   "Solar Fangs",
+  "Mirror Carapace",
+  "Static Blood",
+  "Prism Jaw",
+  "Neon Spores",
+  "Void Knuckles",
+  "Flux Mane",
+  "Quantum Scales",
+  "Viral Halo",
+  "Magnet Paws",
+  "Comet Whiskers",
+  "Circuit Frill",
+  "Gamma Bloom",
+];
+
+export const BODY_SHAPES = [
+  "blob",
+  "beetle",
+  "slug",
+  "mantis",
+  "drake",
+  "crab",
+  "manta",
+  "spider",
+  "sprout",
+  "orb",
+  "wyrm",
+  "crystal",
+];
+
+export const EYE_TYPES = [
+  "round",
+  "slit",
+  "visor",
+  "triple",
+  "mono",
+  "wide",
+  "diamond",
+  "sleepy",
+  "spark",
+  "void",
+  "ring",
+  "glitch",
+];
+
+export const HORN_TYPES = [
+  "short",
+  "long",
+  "curved",
+  "antenna",
+  "forked",
+  "halo",
+  "spikes",
+  "fin",
+  "crown",
+  "none",
+];
+
+export const AURA_STYLES = [
+  "soft",
+  "ring",
+  "flare",
+  "mist",
+  "pulse",
+  "static",
+  "radial",
+  "comet",
+  "halo",
+  "glitch",
+];
+
+export const PATTERN_STYLES = [
+  "spots",
+  "stripes",
+  "ridges",
+  "veins",
+  "scales",
+  "rings",
+  "chevrons",
+  "cells",
+  "stars",
+  "circuit",
+  "cracks",
+  "none",
+];
+
+export const MUTATION_EFFECTS = [
+  "drip",
+  "spark",
+  "smoke",
+  "orbit",
+  "scan",
+  "shimmer",
+  "glitch",
+  "flare",
+  "dust",
+  "ripple",
 ];
 
 export const PASSIVE_TRAIT_CONFIG: Record<
@@ -164,6 +275,22 @@ export const NAME_PREFIXES = [
   "Quon",
   "Astra",
   "Nero",
+  "Kael",
+  "Sova",
+  "Rift",
+  "Mire",
+  "Talo",
+  "Juno",
+  "Hexa",
+  "Voro",
+  "Pryx",
+  "Eon",
+  "Coda",
+  "Silex",
+  "Axiom",
+  "Vanta",
+  "Cyra",
+  "Boro",
 ];
 
 export const NAME_SUFFIXES = [
@@ -179,6 +306,41 @@ export const NAME_SUFFIXES = [
   "drift",
   "nova",
   "flux",
+  "thorn",
+  "mire",
+  "quake",
+  "wisp",
+  "crown",
+  "fang",
+  "spore",
+  "gaze",
+  "coil",
+  "rift",
+  "bloom",
+  "flare",
+  "spike",
+  "veil",
+  "glyph",
+];
+
+export const RARITY_NAME_TITLES: Record<Rarity, string[]> = {
+  Common: ["Sprout", "Drifter", "Mote", "Pod"],
+  Rare: ["Neon", "Chrome", "Prism", "Ion"],
+  Epic: ["Alpha", "Nova", "Viral", "Apex"],
+  Legendary: ["Prime", "Ancient", "Royal", "Titan"],
+  Mythic: ["Astral", "Eclipse", "Genesis", "Celestial"],
+  Secret: ["Anomaly", "Null", "Omega", "Paradox"],
+};
+
+export const SECRET_NAME_CORES = [
+  "Null-9",
+  "Parallax",
+  "ZeroBloom",
+  "GhostCircuit",
+  "OmegaDrift",
+  "NoSignal",
+  "WhiteNoise",
+  "VoidSaint",
 ];
 
 export const PALETTE = [

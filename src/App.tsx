@@ -265,9 +265,18 @@ function CreatureVisual({
   large?: boolean;
   reveal?: boolean;
 }) {
+  const visualDna = creature.visualDna ?? {
+    bodyShape: "blob",
+    eyeType: "round",
+    hornType: "short",
+    auraStyle: "soft",
+    patternStyle: "spots",
+    mutationEffect: "spark",
+  };
+
   return (
     <div
-      className={`creature-visual creature-${creature.rarity.toLowerCase()} ${
+      className={`creature-visual creature-${creature.rarity.toLowerCase()} body-${visualDna.bodyShape} eyes-${visualDna.eyeType} horns-${visualDna.hornType} aura-${visualDna.auraStyle} pattern-${visualDna.patternStyle} mutation-${visualDna.mutationEffect} ${
         large ? "creature-visual-large" : ""
       } ${reveal ? getRevealClass(creature.rarity) : ""}`}
       style={

@@ -1,9 +1,15 @@
 import {
   ACHIEVEMENTS,
+  AURA_STYLES,
+  BODY_SHAPES,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
+  EYE_TYPES,
+  HORN_TYPES,
   INITIAL_STATE,
+  MUTATION_EFFECTS,
   PASSIVE_TRAIT_CONFIG,
+  PATTERN_STYLES,
   RARITY_ORDER,
   STORAGE_KEY,
   TUTORIAL_TASKS,
@@ -19,6 +25,7 @@ import type {
   LimitedOfferId,
   MissionId,
   PassiveTrait,
+  CreatureVisualDna,
   RareEventId,
   SessionRewardId,
   TutorialTask,
@@ -106,6 +113,21 @@ const getPowerScore = (creature: Creature) =>
       creature.passiveTraits.length * 34,
   );
 
+const normalizeVisualDna = (value: unknown, fallbackSeed = 0): CreatureVisualDna => {
+  const record = isRecord(value) ? value : {};
+  const pick = (items: string[], raw: unknown, offset: number) =>
+    typeof raw === "string" && items.includes(raw) ? raw : items[(fallbackSeed + offset) % items.length];
+
+  return {
+    bodyShape: pick(BODY_SHAPES, record.bodyShape, 0),
+    eyeType: pick(EYE_TYPES, record.eyeType, 1),
+    hornType: pick(HORN_TYPES, record.hornType, 2),
+    auraStyle: pick(AURA_STYLES, record.auraStyle, 3),
+    patternStyle: pick(PATTERN_STYLES, record.patternStyle, 4),
+    mutationEffect: pick(MUTATION_EFFECTS, record.mutationEffect, 5),
+  };
+};
+
 const normalizeCreature = (value: unknown): Creature | null => {
   if (!isRecord(value)) {
     return null;
@@ -137,6 +159,7 @@ const normalizeCreature = (value: unknown): Creature | null => {
     powerScore: 0,
     isNew: typeof value.isNew === "boolean" ? value.isNew : false,
     colors,
+    visualDna: normalizeVisualDna(value.visualDna, typeof value.id === "string" ? value.id.length : 0),
     createdAt: typeof value.createdAt === "number" ? value.createdAt : Date.now(),
   };
 
