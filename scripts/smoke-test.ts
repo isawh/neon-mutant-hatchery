@@ -9,6 +9,8 @@ import {
   DUPLICATE_SHARDS_BY_RARITY,
   EYE_TYPES,
   EVENT_ROTATION_INTERVAL_MS,
+  FUSION_BASE_COIN_COST,
+  FUSION_BASE_SHARD_COST,
   HATCH_BASE_COST,
   HORN_TYPES,
   INITIAL_STATE,
@@ -112,6 +114,8 @@ const checks: Check[] = [
       assert(HATCH_BASE_COST > 0, "HATCH_BASE_COST must be positive");
       assert(UPGRADE_BASE_COST > HATCH_BASE_COST, "UPGRADE_BASE_COST should be higher than hatch base cost");
       assert(BREED_COIN_COST > UPGRADE_BASE_COST, "BREED_COIN_COST should be a medium-term goal");
+      assert(FUSION_BASE_COIN_COST > HATCH_BASE_COST, "FUSION_BASE_COIN_COST should be a resource sink");
+      assert(FUSION_BASE_SHARD_COST > 0, "FUSION_BASE_SHARD_COST should be positive");
       assert(INITIAL_STATE.coins >= 0 && INITIAL_STATE.gems >= 0 && INITIAL_STATE.eggs >= 0, "Initial resources invalid");
       assert(INITIAL_STATE.mutantShards === 0, "Initial mutant shards should start at zero");
       assert(TABS.length === 5 && unique(TABS.map((tab) => tab.id)), "Tabs must contain five unique ids");

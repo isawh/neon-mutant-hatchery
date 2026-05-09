@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   DEV_SAVE_RESET_VERSION,
-  BREED_COIN_COST,
-  BREED_GEM_COST,
   DAILY_LOGIN_REWARDS,
   INITIAL_STATE,
   INVITE_MILESTONES,
@@ -36,6 +34,8 @@ import {
   ensureLiveOpsState,
   ensureProgressionState,
   getFullAlbumProgress,
+  getFusionBlockReason,
+  getFusionCost,
   getRarityAlbumProgress,
   getBoostedIncomePerMinute,
   getCreatureIncomePerMinute,
@@ -161,7 +161,7 @@ const ONBOARDING_STEPS = [
   },
   {
     title: "Upgrade and breed stronger mutants",
-    body: "Level up your best pulls, then combine parents to chase better generations.",
+    body: "Level up your best pulls, then fuse expendable mutants to chase stronger generations.",
   },
   {
     title: "Invite friends to earn rewards",
@@ -380,6 +380,7 @@ function CreatureCard({
   onUpgrade,
   onFavorite,
   canUpgrade,
+  locked,
   isFavorite,
   upgrading,
   highlightUpgrade,
@@ -391,6 +392,7 @@ function CreatureCard({
   onUpgrade?: () => void;
   onFavorite?: () => void;
   canUpgrade?: boolean;
+  locked?: boolean;
   isFavorite?: boolean;
   upgrading?: boolean;
   highlightUpgrade?: boolean;
@@ -401,13 +403,14 @@ function CreatureCard({
     <article
       className={`creature-card ${RARITY_CONFIG[creature.rarity].className} ${
         selected ? "selected" : ""
-      } ${compact ? "compact" : ""} ${upgrading ? "upgrading" : ""}`}
+      } ${compact ? "compact" : ""} ${upgrading ? "upgrading" : ""} ${locked ? "locked" : ""}`}
       onClick={onClick}
     >
       <div className="card-topline">
         <span>{creature.rarity}</span>
         <div className="card-badges">
           {creature.isNew ? <span className="new-badge">NEW</span> : null}
+          {locked ? <span>LOCKED</span> : null}
           <span>Gen {creature.generation}</span>
         </div>
       </div>
@@ -491,6 +494,7 @@ export default function App() {
   const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [breedSelection, setBreedSelection] = useState<string[]>([]);
   const [isHatching, setIsHatching] = useState(false);
+  const [isFusing, setIsFusing] = useState(false);
   const [revealKey, setRevealKey] = useState(0);
   const [floatingCoins, setFloatingCoins] = useState<Array<{ id: number; amount: number }>>([]);
   const [collectionSort, setCollectionSort] = useState<"rarity" | "power" | "income">("rarity");
@@ -623,6 +627,12 @@ export default function App() {
       })[0],
     [state.creatures],
   );
+  const selectedFusionParents = breedSelection
+    .map((id) => state.creatures.find((creature) => creature.id === id))
+    .filter((creature): creature is Creature => Boolean(creature));
+  const fusionCost = getFusionCost(selectedFusionParents);
+  const fusionBlockReason =
+    breedSelection.length === 2 ? getFusionBlockReason(state, breedSelection[0], breedSelection[1]) : "";
 
   const notify = (text: string, tone: "good" | "event" = "good") => {
     const id = notificationId.current + 1;
@@ -1185,26 +1195,62 @@ export default function App() {
   const handleBreed = () => {
     playButtonTap();
     const [firstId, secondId] = breedSelection;
+    const blockReason = getFusionBlockReason(state, firstId, secondId);
+    if (blockReason) {
+      notify(blockReason, "event");
+      haptic.error();
+      return;
+    }
+
     const result = firstId && secondId ? breedCreatures(state, firstId, secondId) : null;
     if (!result) {
       haptic.error();
       return;
     }
-    setState(ensureProgressionState(result.state));
-    setLastHatched(result.creature);
-    setLastHatchResult(result);
-    setRevealKey((key) => key + 1);
-    if (isFlexRarity(result.creature.rarity)) {
-      setRecentRareHatch(result.creature);
-    }
-    setBreedSelection([]);
-    setActiveTab("hatch");
-    playHatchReveal(result.creature.rarity);
-    hapticForRarity(result.creature.rarity);
-    track("breed_completed", { rarity: result.creature.rarity, creatureId: result.creature.id });
+    setIsFusing(true);
+    haptic.impact("heavy");
+    window.setTimeout(() => {
+      setState(ensureProgressionState(result.state));
+      setLastHatched(result.creature);
+      setLastHatchResult(result);
+      setRevealKey((key) => key + 1);
+      if (isFlexRarity(result.creature.rarity)) {
+        setRecentRareHatch(result.creature);
+      }
+      setBreedSelection([]);
+      setIsFusing(false);
+      setActiveTab("hatch");
+      playHatchReveal(result.creature.rarity);
+      hapticForRarity(result.creature.rarity);
+      notify(result.unstable ? "Unstable fusion mutation formed" : "Fusion complete", result.unstable ? "event" : "good");
+      track("breed_completed", {
+        rarity: result.creature.rarity,
+        creatureId: result.creature.id,
+        consumedCreatureIds: result.consumedCreatureIds,
+        unstable: result.unstable,
+      });
+    }, 920);
   };
 
   const toggleBreedSelection = (creatureId: string) => {
+    if (isFusing) {
+      return;
+    }
+    if (state.favoriteCreatureIds.includes(creatureId)) {
+      notify("Favorited mutants are locked. Unfavorite before fusion.", "event");
+      haptic.error();
+      return;
+    }
+    if (state.equippedCreatureIds.includes(creatureId)) {
+      notify("Active equipped mutants are locked. Unequip before fusion.", "event");
+      haptic.error();
+      return;
+    }
+    if (state.creatures.length <= 2) {
+      notify("Keep at least one spare mutant before fusion.", "event");
+      haptic.error();
+      return;
+    }
     haptic.selection();
     setBreedSelection((current) => {
       if (current.includes(creatureId)) {
@@ -1546,6 +1592,7 @@ export default function App() {
                 setScreenFlash(null);
                 setRecentRareHatch(null);
                 setBreedSelection([]);
+                setIsFusing(false);
                 setShowOfflineModal(false);
                 haptic.impact("heavy");
               }}
@@ -1710,12 +1757,21 @@ export default function App() {
                   {lastHatchResult ? (
                     <div className={`hatch-result-card ${RARITY_CONFIG[lastHatchResult.creature.rarity].className}`}>
                       <div>
-                        <p className="eyebrow">{lastHatchResult.duplicate ? "Duplicate converted" : "New hatch secured"}</p>
+                        <p className="eyebrow">
+                          {lastHatchResult.unstable
+                            ? "Unstable fusion"
+                            : lastHatchResult.consumedCreatureIds?.length
+                              ? "Fusion result"
+                              : lastHatchResult.duplicate
+                                ? "Duplicate converted"
+                                : "New hatch secured"}
+                        </p>
                         <h3>{lastHatchResult.creature.name}</h3>
                         <div className="result-badges">
                           <span>{lastHatchResult.creature.rarity}</span>
                           <span>Power {formatNumber(getPowerScore(lastHatchResult.creature))}</span>
                           <span>{lastHatchResult.duplicate ? `+${lastHatchResult.shardsGained} shards` : "NEW"}</span>
+                          {lastHatchResult.consumedCreatureIds?.length ? <span>2 consumed</span> : null}
                         </div>
                       </div>
                       {rarityRank(lastHatchResult.creature.rarity) >= rarityRank("Legendary") ? (
@@ -1914,7 +1970,7 @@ export default function App() {
 
         {activeTab === "breed" ? (
           <div className="breed-screen">
-            <div className="breed-machine">
+            <div className={`breed-machine ${isFusing ? "fusing" : ""}`}>
               <div className="parent-slot">
                 {breedSelection[0] ? (
                   <CreatureVisual creature={state.creatures.find((item) => item.id === breedSelection[0])!} />
@@ -1922,7 +1978,9 @@ export default function App() {
                   <span>Parent A</span>
                 )}
               </div>
-              <div className="fusion-core" />
+              <div className="fusion-core">
+                <span />
+              </div>
               <div className="parent-slot">
                 {breedSelection[1] ? (
                   <CreatureVisual creature={state.creatures.find((item) => item.id === breedSelection[1])!} />
@@ -1931,12 +1989,25 @@ export default function App() {
                 )}
               </div>
             </div>
+            <div className="fusion-warning">
+              <strong>Fusion consumes both mutants</strong>
+              <span>
+                Higher rarity, power, and mutation traits improve odds slightly. Outcomes can downgrade, stay stable,
+                upgrade, or destabilize.
+              </span>
+            </div>
+            <div className="fusion-preview">
+              <StatPill label="Coins" value={formatNumber(fusionCost.coins)} />
+              <StatPill label="Shards" value={formatNumber(fusionCost.shards)} />
+              <StatPill label="Energy" value={selectedFusionParents.length === 2 ? "Volatile" : "Select 2"} />
+            </div>
+            {fusionBlockReason ? <div className="fusion-block">{fusionBlockReason}</div> : null}
             <button
               className="primary-button"
-              disabled={breedSelection.length < 2 || state.coins < BREED_COIN_COST || state.gems < BREED_GEM_COST}
+              disabled={breedSelection.length < 2 || Boolean(fusionBlockReason) || isFusing}
               onClick={handleBreed}
             >
-              Breed - {formatNumber(BREED_COIN_COST)} coins + {formatNumber(BREED_GEM_COST)} gem
+              {isFusing ? "Mutating..." : `Fuse - ${formatNumber(fusionCost.coins)} coins + ${formatNumber(fusionCost.shards)} shards`}
             </button>
             <div className="creature-grid compact-grid">
               {state.creatures.map((creature) => (
@@ -1944,13 +2015,18 @@ export default function App() {
                   key={creature.id}
                   creature={creature}
                   compact
+                  locked={
+                    state.favoriteCreatureIds.includes(creature.id) ||
+                    state.equippedCreatureIds.includes(creature.id) ||
+                    state.creatures.length <= 2
+                  }
                   selected={breedSelection.includes(creature.id)}
                   onClick={() => toggleBreedSelection(creature.id)}
                 />
               ))}
             </div>
             {!state.creatures.length ? (
-              <EmptyState title="Breeding locked" body="You need at least two creatures before the fusion bay can run." />
+              <EmptyState title="Fusion locked" body="You need spare mutants before the fusion bay can run." />
             ) : null}
           </div>
         ) : null}
@@ -2223,6 +2299,7 @@ export default function App() {
                   setScreenFlash(null);
                   setRecentRareHatch(null);
                   setBreedSelection([]);
+                  setIsFusing(false);
                   setShowOfflineModal(false);
                   notify("Local save reset", "event");
                   haptic.impact("heavy");
@@ -2246,6 +2323,7 @@ export default function App() {
                   setScreenFlash(null);
                   setRecentRareHatch(null);
                   setBreedSelection([]);
+                  setIsFusing(false);
                   setShowOfflineModal(false);
                   notify("Forced fresh save", "event");
                   haptic.impact("heavy");

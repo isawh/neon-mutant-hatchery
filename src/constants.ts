@@ -31,6 +31,7 @@ export const INITIAL_STATE: GameState = {
   totalBreeds: 0,
   discoveredCreatureNames: [],
   favoriteCreatureIds: [],
+  equippedCreatureIds: [],
   referralCode: "",
   referredBy: "",
   referralRewardClaimed: false,
@@ -66,7 +67,7 @@ export const INITIAL_STATE: GameState = {
 export const TABS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: "hatch", label: "Hatch", icon: "capsule" },
   { id: "collection", label: "Collection", icon: "grid" },
-  { id: "breed", label: "Breed", icon: "helix" },
+  { id: "breed", label: "Fusion", icon: "helix" },
   { id: "shop", label: "Shop", icon: "cart" },
   { id: "profile", label: "Profile", icon: "user" },
 ];
@@ -386,6 +387,10 @@ export const BREED_COIN_COST = 320;
 
 export const BREED_GEM_COST = 1;
 
+export const FUSION_BASE_COIN_COST = 220;
+
+export const FUSION_BASE_SHARD_COST = 8;
+
 export const FREE_CAPSULE_COOLDOWN_MS = 20 * 60 * 1000;
 
 export const HATCH_STREAK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -598,7 +603,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "breed_1",
     title: "First Fusion",
-    description: "Breed creatures once.",
+    description: "Fuse creatures once.",
     progress: 0,
     target: 1,
     claimed: false,
@@ -607,7 +612,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "breed_5",
     title: "Fusion Routine",
-    description: "Breed creatures 5 times.",
+    description: "Fuse creatures 5 times.",
     progress: 0,
     target: 5,
     claimed: false,
@@ -616,7 +621,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "breed_20",
     title: "Gene Architect",
-    description: "Breed creatures 20 times.",
+    description: "Fuse creatures 20 times.",
     progress: 0,
     target: 20,
     claimed: false,
@@ -674,7 +679,7 @@ export const DAILY_MISSION_POOL: Record<MissionId, Omit<DailyMission, "progress"
   },
   breed_1: {
     id: "breed_1",
-    title: "Breed creatures",
+    title: "Fuse creatures",
     target: 1,
     reward: { gems: 2, premiumCapsules: 1 },
   },

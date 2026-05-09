@@ -46,12 +46,13 @@ Deploy only if both commands pass.
 - Confirm coins decrease, level increases, power/income update, and upgrade animation plays.
 - Confirm level achievements progress and rewards can be claimed.
 
-### Breed
+### Fusion
 
-- Select two different creatures.
-- Confirm breed cost is shown as `320 coins + 1 gem`.
-- Confirm breeding creates a child, increments breed achievements, and resets selection.
-- Confirm invalid breed states are disabled.
+- Select two different non-favorited creatures.
+- Confirm fusion cost is shown in coins and shards.
+- Confirm the warning says fusion consumes both mutants.
+- Confirm fusion removes both selected creatures and creates one mutated result.
+- Confirm favorited creatures and low collection-depth states are blocked with a clear warning.
 
 ### Daily Reward
 

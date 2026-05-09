@@ -7,10 +7,10 @@ import {
   DAILY_MISSION_POOL,
   DAILY_LOGIN_REWARDS,
   DUPLICATE_SHARDS_BY_RARITY,
-  BREED_COIN_COST,
-  BREED_GEM_COST,
   EYE_TYPES,
   EVENT_ROTATION_INTERVAL_MS,
+  FUSION_BASE_COIN_COST,
+  FUSION_BASE_SHARD_COST,
   FREE_CAPSULE_COOLDOWN_MS,
   HATCH_BASE_COST,
   HATCH_STREAK_LUCK_PER_HATCH,
@@ -197,6 +197,7 @@ export const ensureProgressionState = (state: GameState): GameState => {
   return {
     ...state,
     mutantShards: typeof state.mutantShards === "number" ? state.mutantShards : 0,
+    equippedCreatureIds: Array.isArray(state.equippedCreatureIds) ? state.equippedCreatureIds : [],
     achievements: ACHIEVEMENTS.map((achievement) => {
       const existing = existingAchievements.get(achievement.id);
       return {
@@ -666,6 +667,105 @@ const inheritRarity = (parents: Creature[]): Rarity => {
   return RARITY_ORDER[Math.max(0, Math.min(RARITY_ORDER.length - 1, rarityIndex))];
 };
 
+export const getFusionCost = (parents: Creature[]) => {
+  if (parents.length < 2) {
+    return { coins: FUSION_BASE_COIN_COST, shards: FUSION_BASE_SHARD_COST };
+  }
+
+  const rarityWeight = parents.reduce((sum, parent) => sum + RARITY_ORDER.indexOf(parent.rarity), 0);
+  const levelWeight = parents.reduce((sum, parent) => sum + parent.level, 0);
+  return {
+    coins: Math.round(FUSION_BASE_COIN_COST * (1 + rarityWeight * 0.42) + levelWeight * 18),
+    shards: Math.round(FUSION_BASE_SHARD_COST * (1 + rarityWeight * 0.32) + levelWeight * 1.6),
+  };
+};
+
+export const getFusionBlockReason = (state: GameState, firstId?: string, secondId?: string) => {
+  if (!firstId || !secondId) {
+    return "Select two mutants to fuse.";
+  }
+  if (firstId === secondId) {
+    return "Choose two different mutants.";
+  }
+  if (state.creatures.length <= 2) {
+    return "Keep at least one spare mutant before fusion.";
+  }
+  if (state.favoriteCreatureIds.includes(firstId) || state.favoriteCreatureIds.includes(secondId)) {
+    return "Favorited mutants are locked. Unfavorite them before fusion.";
+  }
+  if (state.equippedCreatureIds.includes(firstId) || state.equippedCreatureIds.includes(secondId)) {
+    return "Active equipped mutants are locked. Unequip them before fusion.";
+  }
+
+  const parents = [
+    state.creatures.find((creature) => creature.id === firstId),
+    state.creatures.find((creature) => creature.id === secondId),
+  ].filter((creature): creature is Creature => Boolean(creature));
+  if (parents.length < 2) {
+    return "Selected mutant is no longer available.";
+  }
+
+  const cost = getFusionCost(parents);
+  if (state.coins < cost.coins || state.mutantShards < cost.shards) {
+    return `Fusion needs ${cost.coins} coins and ${cost.shards} shards.`;
+  }
+
+  return "";
+};
+
+const pickFusionRarity = (parents: Creature[], unstable: boolean): Rarity => {
+  const ranks = parents.map((parent) => RARITY_ORDER.indexOf(parent.rarity));
+  const bestRank = Math.max(...ranks);
+  const averageRank = ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
+  const powerBonus = Math.min(0.18, parents.reduce((sum, parent) => sum + getPowerScore(parent), 0) / 6500);
+  const traitBonus = Math.min(0.12, new Set(parents.flatMap((parent) => parent.traits)).size * 0.012);
+  const upgradeChance = Math.min(0.34, 0.1 + bestRank * 0.035 + powerBonus + traitBonus + (unstable ? 0.04 : 0));
+  const downgradeChance = Math.max(0.08, 0.28 - averageRank * 0.035);
+  const roll = Math.random();
+  let nextRank = Math.round(averageRank);
+
+  if (roll < downgradeChance) {
+    nextRank -= 1;
+  } else if (roll > 1 - upgradeChance) {
+    nextRank += Math.random() > 0.88 && unstable ? 2 : 1;
+  } else if (roll > 0.5 + upgradeChance * 0.35) {
+    nextRank = bestRank;
+  }
+
+  return RARITY_ORDER[Math.max(0, Math.min(RARITY_ORDER.length - 1, nextRank))];
+};
+
+const mutateFusionCreature = (creature: Creature, parents: Creature[], unstable: boolean): Creature => {
+  if (!unstable) {
+    return creature;
+  }
+
+  const unstableName = `VX-${creature.name.replace(/\s+/g, "-").replace(/[aeiou]/gi, "0")}`;
+  const incomeBonus = 1.08 + Math.random() * 0.12;
+  const mutated: Creature = {
+    ...creature,
+    name: unstableName,
+    incomePerMinute: Math.round(creature.incomePerMinute * incomeBonus),
+    traits: Array.from(new Set(["Unstable Core", "Void Tears", ...parents.flatMap((parent) => parent.traits).slice(0, 2)])).slice(0, 3),
+    colors: {
+      body: "#f2f7ff",
+      accent: sample([parents[0].colors.accent, parents[1].colors.accent, "#ff4fd8"]),
+      glow: sample(["#ffffff", "#1df7ff", "#ff4fd8"]),
+      eye: "#050713",
+    },
+    visualDna: {
+      bodyShape: sample(["asym", "poly", "crystal"]),
+      eyeType: sample(["glitch", "void", "ring"]),
+      hornType: sample(["halo", "forked", "crystal"]),
+      auraStyle: "glitch",
+      patternStyle: sample(["circuit", "cracks"]),
+      mutationEffect: "glitch",
+    },
+  };
+
+  return { ...mutated, powerScore: getPowerScore(mutated) };
+};
+
 export const hatchEgg = (state: GameState): HatchResult | null => {
   const now = Date.now();
   const liveState = ensureLiveOpsState(state, now);
@@ -712,7 +812,8 @@ export const breedCreatures = (
   firstId: string,
   secondId: string,
 ): HatchResult | null => {
-  if (firstId === secondId || state.coins < BREED_COIN_COST || state.gems < BREED_GEM_COST) {
+  const blockReason = getFusionBlockReason(state, firstId, secondId);
+  if (blockReason) {
     return null;
   }
 
@@ -725,22 +826,40 @@ export const breedCreatures = (
   }
 
   const generation = Math.max(parents[0].generation, parents[1].generation) + 1;
-  const creature = createRandomCreature(generation, parents as Creature[], state.discoveredCreatureNames, state);
-  const duplicate = state.discoveredCreatureNames.includes(creature.name);
-  const shardsGained = duplicate ? DUPLICATE_SHARDS_BY_RARITY[creature.rarity] : 0;
+  const fusionCost = getFusionCost(parents as Creature[]);
+  const parentPower = parents.reduce((sum, parent) => sum + getPowerScore(parent!), 0);
+  const unstableChance =
+    0.04 +
+    Math.min(0.07, parentPower / 9000) +
+    (parents.some((parent) => parent?.passiveTraits.includes("Glitched")) ? 0.035 : 0);
+  const unstable = Math.random() < unstableChance;
+  const rarity = pickFusionRarity(parents as Creature[], unstable);
+  const rawCreature = mutateFusionCreature(
+    createRandomCreature(generation, parents as Creature[], state.discoveredCreatureNames, state, false, rarity),
+    parents as Creature[],
+    unstable,
+  );
+  const creature = state.discoveredCreatureNames.includes(rawCreature.name)
+    ? {
+        ...rawCreature,
+        name: `${rawCreature.name}-M${randomInt(10, 99)}`,
+        isNew: true,
+      }
+    : rawCreature;
+  const shardsGained = 0;
+  const consumedIds = [firstId, secondId];
   const nextState = progressMission(
     {
       ...state,
-      coins: state.coins - BREED_COIN_COST,
-      gems: state.gems - BREED_GEM_COST,
+      coins: state.coins - fusionCost.coins,
+      mutantShards: state.mutantShards - fusionCost.shards + shardsGained,
       hatchStreak: 0,
       hatchStreakExpiresAt: 0,
       totalBreeds: state.totalBreeds + 1,
-      mutantShards: state.mutantShards + shardsGained,
-      discoveredCreatureNames: duplicate
-        ? state.discoveredCreatureNames
-        : Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
-      creatures: duplicate ? state.creatures : [creature, ...state.creatures],
+      discoveredCreatureNames: Array.from(new Set([...state.discoveredCreatureNames, creature.name])),
+      favoriteCreatureIds: state.favoriteCreatureIds.filter((id) => !consumedIds.includes(id)),
+      equippedCreatureIds: state.equippedCreatureIds.filter((id) => !consumedIds.includes(id)),
+      creatures: [creature, ...state.creatures.filter((existing) => !consumedIds.includes(existing.id))],
       lastActiveAt: Date.now(),
     },
     "breed_1",
@@ -748,8 +867,10 @@ export const breedCreatures = (
 
   return {
     creature,
-    duplicate,
+    duplicate: false,
     shardsGained,
+    unstable,
+    consumedCreatureIds: consumedIds,
     state: nextState,
   };
 };

@@ -16,12 +16,12 @@ Current tuned targets from `npm run sim:balance`:
 
 - First hatch: immediate from starter capsules and coins.
 - First upgrade: around 1-2 minutes for free players, depending on first creature rarity and passive trait.
-- First breed: around 5-8 minutes for guided free play.
-- Premium capsules: speed up early income and reduce hatch friction, but still hit first breed around 5 minutes in the simulation.
+- First fusion: now behaves as a mid-term resource sink because it consumes two mutants plus coins and shards.
+- Premium capsules: speed up early income and reduce hatch friction, but fusion still requires expendable creatures and shards.
 
 Latest deterministic sim output:
 
-| Scenario | First upgrade | First breed | 10m capsules | 10m upgrades |
+| Scenario | First upgrade | First fusion | 10m capsules | 10m upgrades |
 | --- | ---: | ---: | ---: | ---: |
 | Free player, 10m | 1.7m | 5.3m | 3 | 3 |
 | Free player, 30m seed | 1.9m | 8.0m | 3 | 8 |
@@ -35,10 +35,10 @@ Premium can upgrade immediately because paid capsules avoid the first coin spend
 - Base hatch cost: `26` coins, scaling by total hatches and hatch streak.
 - Base upgrade cost: `96` coins, scaling by level, rarity, and passive traits.
 - Duplicate creatures convert into mutant shards. Shards are saved in local/cloud game state and can cover an upgrade when coins are short.
-- Breed cost: `320` coins + `1` gem.
+- Fusion cost: starts at `220` coins + `8` shards and scales with input rarity and level.
 - Daily reward: `90` coins + `1` gem + `1` capsule, plus login streak coin bonus.
 
-These values make the first hatch instant, keep the first upgrade close to the 1-2 minute target, and make breeding feel like the first meaningful medium goal.
+These values make the first hatch instant, keep the first upgrade close to the 1-2 minute target, and make fusion a deliberate collection/resource sink instead of free duplication.
 
 ## Rarity Odds
 
@@ -87,5 +87,5 @@ The script prints:
 - upgrades bought
 - average creature income
 - time to first upgrade
-- time to first breed
+- time to first fusion
 - rarity distribution

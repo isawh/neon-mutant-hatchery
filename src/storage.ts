@@ -290,6 +290,9 @@ export const loadGameState = (): GameState => {
       favoriteCreatureIds: Array.isArray(parsed.favoriteCreatureIds)
         ? parsed.favoriteCreatureIds.filter((id) => typeof id === "string")
         : INITIAL_STATE.favoriteCreatureIds,
+      equippedCreatureIds: Array.isArray(parsed.equippedCreatureIds)
+        ? parsed.equippedCreatureIds.filter((id) => typeof id === "string")
+        : INITIAL_STATE.equippedCreatureIds,
       referralCode: typeof parsed.referralCode === "string" ? parsed.referralCode : INITIAL_STATE.referralCode,
       referredBy: typeof parsed.referredBy === "string" ? parsed.referredBy : INITIAL_STATE.referredBy,
       referralRewardClaimed:

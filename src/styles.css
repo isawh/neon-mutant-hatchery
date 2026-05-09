@@ -1878,6 +1878,11 @@ p {
   box-shadow: 0 0 22px rgba(100, 255, 115, 0.2);
 }
 
+.creature-card.locked {
+  opacity: 0.62;
+  filter: grayscale(0.35);
+}
+
 .silhouette-card {
   --rarity: #34425c;
   border-style: dashed;
@@ -2646,6 +2651,11 @@ p {
   background: rgba(7, 13, 27, 0.88);
 }
 
+.breed-machine.fusing {
+  border-color: rgba(255, 79, 216, 0.72);
+  animation: fusionMachineSurge 920ms ease-in-out infinite;
+}
+
 .parent-slot {
   display: grid;
   place-items: center;
@@ -2658,6 +2668,7 @@ p {
 }
 
 .fusion-core {
+  position: relative;
   width: 52px;
   aspect-ratio: 1;
   border: 2px solid var(--pink);
@@ -2665,6 +2676,55 @@ p {
   background: radial-gradient(circle, var(--cyan), transparent 60%);
   box-shadow: 0 0 28px rgba(255, 79, 216, 0.58);
   animation: pulse 1.4s ease-in-out infinite;
+}
+
+.fusion-core span {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 1px solid rgba(29, 247, 255, 0.42);
+  animation: fusionRing 1.2s ease-in-out infinite;
+}
+
+.breed-machine.fusing .fusion-core {
+  animation: fusionCoreBurst 420ms ease-in-out infinite;
+}
+
+.fusion-warning,
+.fusion-block {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(247, 240, 90, 0.24);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(247, 240, 90, 0.12), transparent 48%),
+    rgba(10, 18, 38, 0.86);
+}
+
+.fusion-warning strong,
+.fusion-block {
+  color: var(--yellow);
+  font-weight: 950;
+}
+
+.fusion-warning span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.fusion-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fusion-block {
+  border-color: rgba(255, 79, 216, 0.32);
+  color: #ffb6ea;
+  font-size: 0.78rem;
+  background: rgba(255, 79, 216, 0.08);
 }
 
 .shop-offer,
@@ -3842,6 +3902,45 @@ p {
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes fusionMachineSurge {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1);
+    transform: scale(1);
+  }
+
+  50% {
+    filter: brightness(1.28) saturate(1.45);
+    transform: scale(1.012);
+  }
+}
+
+@keyframes fusionRing {
+  0%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.34;
+  }
+
+  50% {
+    transform: scale(1.22);
+    opacity: 0.9;
+  }
+}
+
+@keyframes fusionCoreBurst {
+  0%,
+  100% {
+    transform: scale(0.92) rotate(0deg);
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    transform: scale(1.18) rotate(12deg);
+    filter: hue-rotate(120deg);
   }
 }
 

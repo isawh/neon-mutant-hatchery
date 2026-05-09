@@ -130,6 +130,7 @@ export type GameState = {
   totalBreeds: number;
   discoveredCreatureNames: string[];
   favoriteCreatureIds: string[];
+  equippedCreatureIds: string[];
   referralCode: string;
   referredBy: string;
   referralRewardClaimed: boolean;
@@ -167,4 +168,6 @@ export type HatchResult = {
   creature: Creature;
   duplicate: boolean;
   shardsGained: number;
+  unstable?: boolean;
+  consumedCreatureIds?: string[];
 };
