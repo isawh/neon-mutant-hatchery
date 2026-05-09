@@ -291,6 +291,7 @@ const telegramApi = async <T>(method: string, body: Record<string, unknown>): Pr
 app.post("/api/payments/create-invoice", async (request: any, response: any) => {
   const playerId = typeof request.body?.playerId === "string" ? request.body.playerId.trim() : "";
   const productId = typeof request.body?.productId === "string" ? request.body.productId.trim() : "";
+  const mockEnabled = nodeEnv !== "production" || devShopMockEnabled;
 
   if (!playerId || !productId) {
     response.status(400).json({ error: "playerId and productId are required" });
@@ -303,11 +304,20 @@ app.post("/api/payments/create-invoice", async (request: any, response: any) => 
     return;
   }
 
-  if (!botToken && (nodeEnv !== "production" || devShopMockEnabled)) {
-    response.json({
-      ok: true,
-      mode: "dev_mock_available",
-      mockEnabled: true,
+  if (!botToken) {
+    console.error("[payments:create-invoice] placeholder", {
+      reason: "BOT_TOKEN missing",
+      playerId,
+      productId,
+      purchaseId: result.purchase.id,
+      mockEnabled,
+    });
+    response.status(500).json({
+      ok: false,
+      mode: "placeholder",
+      error: "BOT_TOKEN missing",
+      invoiceLink: null,
+      mockEnabled,
       purchase: result.purchase,
       invoice: {
         productId: result.product.id,
@@ -322,6 +332,13 @@ app.post("/api/payments/create-invoice", async (request: any, response: any) => 
   }
 
   try {
+    console.log("[payments:create-invoice] telegram_attempt", {
+      playerId,
+      productId,
+      purchaseId: result.purchase.id,
+      starsPrice: result.product.starsPrice,
+      mockEnabled,
+    });
     const invoiceLink = await telegramApi<string>("createInvoiceLink", {
       title: result.product.title,
       description: result.product.description,
@@ -334,8 +351,9 @@ app.post("/api/payments/create-invoice", async (request: any, response: any) => 
 
     response.json({
       ok: true,
-      mode: "telegram_stars",
-      mockEnabled: nodeEnv !== "production" || devShopMockEnabled,
+      mode: "telegram",
+      invoiceLink,
+      mockEnabled,
       purchase: purchaseWithInvoice.purchase,
       invoice: {
         productId: result.product.id,
@@ -346,17 +364,29 @@ app.post("/api/payments/create-invoice", async (request: any, response: any) => 
         invoiceLink,
       },
     });
+    console.log("[payments:create-invoice] telegram", {
+      playerId,
+      productId,
+      purchaseId: result.purchase.id,
+      invoiceLinkCreated: Boolean(invoiceLink),
+      mockEnabled,
+    });
   } catch (error) {
     console.error("[payments] createInvoiceLink failed", {
       playerId,
       productId,
       purchaseId: result.purchase.id,
       error: error instanceof Error ? error.message : error,
+      mode: "placeholder",
+      mockEnabled,
     });
     response.status(502).json({
+      ok: false,
+      mode: "placeholder",
       error: "Telegram invoice creation failed",
       detail: error instanceof Error ? error.message : "Unknown error",
-      mockEnabled: nodeEnv !== "production" || devShopMockEnabled,
+      invoiceLink: null,
+      mockEnabled,
     });
   }
 });

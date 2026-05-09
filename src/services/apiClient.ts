@@ -80,14 +80,21 @@ export type PaymentPurchase = {
   productId: string;
   starsPrice: number;
   status: string;
+  invoiceLink: string | null;
+  payload: string | null;
+  telegramPaymentChargeId: string | null;
+  providerPaymentChargeId: string | null;
   createdAt: string;
   completedAt: string | null;
+  rewardGrantedAt: string | null;
 };
 
 export type CreateInvoiceResponse = {
   ok: boolean;
-  mode: "dev_mock_available" | "telegram_stars_placeholder";
+  mode: "mock" | "placeholder" | "telegram";
   purchase: PaymentPurchase;
+  invoiceLink: string | null;
+  mockEnabled?: boolean;
   invoice: {
     productId: string;
     title: string;
@@ -104,6 +111,8 @@ export type MockCompletePaymentResponse = {
   product: BackendProduct;
   reward: BackendProduct["reward"];
 };
+
+export type PurchaseStatusResponse = MockCompletePaymentResponse;
 
 export type BackendHealthResponse = {
   ok: boolean;
@@ -246,6 +255,14 @@ export const completeMockPayment = async (
     method: "POST",
     body: JSON.stringify({ playerId, productId }),
   });
+};
+
+export const loadPurchaseStatus = async (purchaseId: string): Promise<PurchaseStatusResponse | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<PurchaseStatusResponse>(`/api/payments/purchase/${encodeURIComponent(purchaseId)}`);
 };
 
 export const registerReferralWithBackend = async (

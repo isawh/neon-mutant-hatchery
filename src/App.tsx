@@ -59,6 +59,7 @@ import {
   getTelegramViewportState,
   haptic,
   initTelegramFullscreen,
+  openTelegramInvoice,
   shareTelegramInvite,
 } from "./telegram";
 import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService";
@@ -73,6 +74,7 @@ import {
   isBackendConfigured,
   loadBackendProducts,
   loadCloudSave,
+  loadPurchaseStatus,
   loadReferralStats,
   registerReferralWithBackend,
   saveCloudSave,
@@ -469,6 +471,11 @@ export default function App() {
   const [paymentsMode, setPaymentsMode] = useState<PaymentsMode>("local");
   const [lastPurchaseStatus, setLastPurchaseStatus] = useState("None");
   const [purchaseBusy, setPurchaseBusy] = useState(false);
+  const [pendingMockProductId, setPendingMockProductId] = useState<string | null>(null);
+  const [shopMockEnabled, setShopMockEnabled] = useState(false);
+  const [lastInvoiceMode, setLastInvoiceMode] = useState("none");
+  const [lastInvoiceStatus, setLastInvoiceStatus] = useState("none");
+  const [lastInvoiceLinkExists, setLastInvoiceLinkExists] = useState(false);
   const [backendHealthStatus, setBackendHealthStatus] = useState<BackendHealthStatus>("off");
   const [lastBackendError, setLastBackendError] = useState("");
   const floatingCoinId = useRef(0);
@@ -617,6 +624,49 @@ export default function App() {
     }
 
     return completeMockPayment(cloudPlayerId, productId);
+  };
+
+  const applyCompletedMockPurchase = (completed: MockCompletePaymentResponse) => {
+    applyProductReward(completed.reward);
+    setLastPurchaseStatus(`${completed.purchase.id.slice(0, 8)} ${completed.purchase.status}`);
+    setPaymentsMode("mock");
+    setShopMockEnabled(true);
+    setPendingMockProductId(null);
+    setPendingProductId(null);
+    notify(`${completed.product.title} added`, "good");
+    track("shop_purchase_mocked", {
+      productId: completed.product.id,
+      purchaseId: completed.purchase.id,
+      source: "backend_mock",
+    });
+    haptic.success();
+  };
+
+  const refreshCompletedPurchase = async (purchaseId: string) => {
+    const status = await loadPurchaseStatus(purchaseId);
+    if (!status?.purchase) {
+      return;
+    }
+
+    setLastPurchaseStatus(`${status.purchase.id.slice(0, 8)} ${status.purchase.status}`);
+    if (status.purchase.status === "completed") {
+      if (cloudPlayerId) {
+        const cloudSave = await loadCloudSave(cloudPlayerId);
+        if (cloudSave?.gameState) {
+          const playable = preparePlayableState(cloudSave.gameState, getIncomingReferralCode());
+          applyLoadedState(
+            playable.state,
+            playable.offlineEarned,
+            "cloud",
+            "",
+            cloudSave.updatedAt ?? new Date().toISOString(),
+          );
+        }
+      }
+      setPendingProductId(null);
+      notify(`${status.product.title} payment confirmed`, "good");
+      haptic.success();
+    }
   };
 
   const applyBackendReferralStats = (stats: BackendReferralStats) => {
@@ -1248,23 +1298,47 @@ export default function App() {
     try {
       if (backendConfigured && cloudPlayerId) {
         const invoice = await createPaymentInvoice(cloudPlayerId, productId);
-        if (invoice?.mode === "dev_mock_available") {
+        if (!invoice) {
+          throw new Error("Backend invoice unavailable.");
+        }
+
+        setLastInvoiceMode(invoice.mode);
+        setLastInvoiceLinkExists(Boolean(invoice.invoiceLink ?? invoice.invoice.invoiceLink));
+        setShopMockEnabled(Boolean(invoice.mockEnabled));
+
+        if (invoice.mode === "mock") {
           const completed = await completeBackendMockPurchase(productId);
           if (!completed?.ok) {
             throw new Error("Mock payment completion failed.");
           }
-          applyProductReward(completed.reward);
-          setLastPurchaseStatus(`${completed.purchase.id.slice(0, 8)} ${completed.purchase.status}`);
-          setPaymentsMode("mock");
-          notify(`${completed.product.title} added`, "good");
-          track("shop_purchase_mocked", { productId, purchaseId: completed.purchase.id, source: "backend_mock" });
-        } else if (invoice) {
+          applyCompletedMockPurchase(completed);
+        } else if (invoice.mode === "telegram") {
           setLastPurchaseStatus(`${invoice.purchase.id.slice(0, 8)} ${invoice.purchase.status}`);
           setPaymentsMode("backend");
-          notify("Telegram Stars invoice placeholder created", "event");
-          track("shop_purchase_mocked", { productId, purchaseId: invoice.purchase.id, source: "invoice_placeholder" });
+          if (invoice.mockEnabled) {
+            setPendingMockProductId(productId);
+          }
+          const invoiceLink = invoice.invoiceLink ?? invoice.invoice.invoiceLink;
+          if (!invoiceLink) {
+            throw new Error("Telegram invoice mode returned without invoiceLink.");
+          }
+
+          notify("Opening Telegram Stars invoice", "event");
+          const invoiceStatus = await openTelegramInvoice(invoiceLink);
+          setLastInvoiceStatus(invoiceStatus);
+          notify(`Invoice ${invoiceStatus}`, invoiceStatus === "paid" ? "good" : "event");
+          await refreshCompletedPurchase(invoice.purchase.id);
+          if (invoiceStatus === "paid") {
+            window.setTimeout(() => {
+              void refreshCompletedPurchase(invoice.purchase.id);
+            }, 1800);
+          }
+          track("shop_purchase_mocked", { productId, purchaseId: invoice.purchase.id, source: "telegram_stars" });
         } else {
-          throw new Error("Backend invoice unavailable.");
+          setLastPurchaseStatus(`${invoice.purchase.id.slice(0, 8)} ${invoice.purchase.status}`);
+          setPaymentsMode("backend");
+          notify("Telegram invoice placeholder returned", "event");
+          throw new Error("Telegram invoice placeholder returned instead of real invoice.");
         }
       } else {
         const purchase = purchaseProduct(productId);
@@ -1283,6 +1357,12 @@ export default function App() {
     } catch (error) {
       console.warn("[payments] Purchase flow failed; falling back to local mock when possible.", error);
       setLastBackendError(error instanceof Error ? error.message : String(error));
+      setLastInvoiceStatus("error");
+      if (backendConfigured && cloudPlayerId) {
+        notify("Payment unavailable", "event");
+        haptic.error();
+        return;
+      }
       const purchase = purchaseProduct(productId);
       if (purchase) {
         applyProductReward(purchase.product.reward);
@@ -1296,6 +1376,24 @@ export default function App() {
         notify("Purchase unavailable", "event");
         haptic.error();
       }
+    } finally {
+      setPurchaseBusy(false);
+    }
+  };
+
+  const handleCompleteMockPurchase = async (productId: string) => {
+    setPurchaseBusy(true);
+    try {
+      const completed = await completeBackendMockPurchase(productId);
+      if (!completed?.ok) {
+        throw new Error("Mock payment completion failed.");
+      }
+      applyCompletedMockPurchase(completed);
+    } catch (error) {
+      console.warn("[payments] Mock completion failed.", error);
+      setLastBackendError(error instanceof Error ? error.message : String(error));
+      notify("Mock completion failed", "event");
+      haptic.error();
     } finally {
       setPurchaseBusy(false);
     }
@@ -1843,7 +1941,11 @@ export default function App() {
                 <StatPill label="Cloud sync" value={lastCloudSyncLabel} />
                 <StatPill label="Save source" value={saveSource} />
                 <StatPill label="Payments" value={paymentsMode} />
+                <StatPill label="Shop mock" value={shopMockEnabled ? "Yes" : "No"} />
                 <StatPill label="Last buy" value={lastPurchaseStatus} />
+                <StatPill label="Invoice mode" value={lastInvoiceMode} />
+                <StatPill label="Invoice stat" value={lastInvoiceStatus} />
+                <StatPill label="Invoice link" value={lastInvoiceLinkExists ? "Yes" : "No"} />
                 <StatPill label="Telegram" value={isTelegramEnvironment() ? "Yes" : "No"} />
                 <StatPill label="SDK loaded" value={telegramViewport.telegramSdkLoaded ? "Yes" : "No"} />
                 <StatPill label="TG object" value={telegramViewport.telegramObjectExists ? "Yes" : "No"} />
@@ -2086,10 +2188,21 @@ export default function App() {
             <button className="primary-button" disabled={purchaseBusy} onClick={() => handleProductPurchase(pendingProduct.id)}>
               {purchaseBusy ? "Processing..." : "Buy with Telegram Stars"}
             </button>
+            {pendingMockProductId === pendingProduct.id ? (
+              <button
+                className="mini-button"
+                disabled={purchaseBusy}
+                onClick={() => handleCompleteMockPurchase(pendingProduct.id)}
+              >
+                Complete Mock Purchase
+              </button>
+            ) : null}
             <p className="fine-print">
               {paymentsMode === "local"
                 ? "Local mock purchase only. No invoice or real payment is created."
-                : "Telegram Stars invoice foundation. Dev backends complete with a mock payment."}
+                : shopMockEnabled
+                  ? "Temporary mock completion is enabled for Telegram testing. Remove before public launch."
+                  : "Telegram Stars invoice placeholder. Rewards wait for real payment confirmation."}
             </p>
           </div>
         </div>

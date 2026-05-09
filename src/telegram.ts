@@ -18,6 +18,7 @@ type TelegramWebApp = {
   onEvent?: (eventType: TelegramEventType, callback: TelegramViewportHandler) => void;
   offEvent?: (eventType: TelegramEventType, callback: TelegramViewportHandler) => void;
   openTelegramLink?: (url: string) => void;
+  openInvoice?: (url: string, callback?: (status: string) => void) => void;
   viewportHeight?: number;
   viewportStableHeight?: number;
   isFullscreen?: boolean;
@@ -369,6 +370,22 @@ export const haptic = {
 export const getTelegramStartParam = () => getWebApp()?.initDataUnsafe?.start_param ?? "";
 
 export const getTelegramInitData = () => getWebApp()?.initData ?? "";
+
+export const openTelegramInvoice = (invoiceLink: string) =>
+  new Promise<string>((resolve) => {
+    const webApp = getWebApp();
+    if (webApp?.openInvoice) {
+      try {
+        webApp.openInvoice(invoiceLink, (status) => resolve(status));
+      } catch {
+        resolve("failed");
+      }
+      return;
+    }
+
+    window.open(invoiceLink, "_blank", "noopener,noreferrer");
+    resolve("opened_external");
+  });
 
 export const shareTelegramInvite = (url: string, text: string) => {
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
