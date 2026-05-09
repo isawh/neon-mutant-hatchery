@@ -3,9 +3,12 @@ import cors from "cors";
 import { config } from "dotenv";
 import { createHmac, timingSafeEqual } from "crypto";
 import {
+  attachInvoiceLink,
   claimReferralMilestone,
+  completeTelegramPurchase,
   completeMockPurchase,
   createPurchaseInvoice,
+  findPurchaseById,
   findOrCreatePlayer,
   findPlayerById,
   getDevPlayer,
@@ -27,6 +30,8 @@ const host = "0.0.0.0";
 const botToken = process.env.BOT_TOKEN ?? "";
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const frontendUrl = process.env.FRONTEND_URL ?? "";
+// TODO: remove DEV_SHOP_MOCK before public launch. It exists only for Telegram production testing before Stars webhooks are live.
+const devShopMockEnabled = process.env.DEV_SHOP_MOCK === "true";
 
 const allowedOrigins = new Set(
   [
@@ -266,7 +271,24 @@ app.get("/api/products", (_request: any, response: any) => {
   response.json({ products: getProducts() });
 });
 
-app.post("/api/payments/create-invoice", (request: any, response: any) => {
+const telegramApi = async <T>(method: string, body: Record<string, unknown>): Promise<T> => {
+  if (!botToken) {
+    throw new Error("BOT_TOKEN is required for Telegram Bot API calls.");
+  }
+
+  const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await telegramResponse.json() as { ok: boolean; result?: T; description?: string };
+  if (!telegramResponse.ok || !payload.ok || payload.result === undefined) {
+    throw new Error(payload.description ?? `Telegram API ${method} failed`);
+  }
+  return payload.result;
+};
+
+app.post("/api/payments/create-invoice", async (request: any, response: any) => {
   const playerId = typeof request.body?.playerId === "string" ? request.body.playerId.trim() : "";
   const productId = typeof request.body?.productId === "string" ? request.body.productId.trim() : "";
 
@@ -281,26 +303,83 @@ app.post("/api/payments/create-invoice", (request: any, response: any) => {
     return;
   }
 
-  // TODO: replace this placeholder with Telegram Stars createInvoiceLink/sendInvoice.
-  // TODO: validate pre_checkout_query and grant rewards only after successful_payment is confirmed server-side.
-  response.json({
-    ok: true,
-    mode: nodeEnv === "production" ? "telegram_stars_placeholder" : "dev_mock_available",
-    purchase: result.purchase,
-    invoice: {
-      productId: result.product.id,
+  if (!botToken && (nodeEnv !== "production" || devShopMockEnabled)) {
+    response.json({
+      ok: true,
+      mode: "dev_mock_available",
+      mockEnabled: true,
+      purchase: result.purchase,
+      invoice: {
+        productId: result.product.id,
+        title: result.product.title,
+        description: result.product.description,
+        starsPrice: result.product.starsPrice,
+        payload: result.purchase.id,
+        invoiceLink: null,
+      },
+    });
+    return;
+  }
+
+  try {
+    const invoiceLink = await telegramApi<string>("createInvoiceLink", {
       title: result.product.title,
       description: result.product.description,
-      starsPrice: result.product.starsPrice,
-      payload: `purchase:${result.purchase.id}`,
-      invoiceLink: null,
-    },
+      payload: result.purchase.id,
+      provider_token: "",
+      currency: "XTR",
+      prices: [{ label: result.product.title, amount: result.product.starsPrice }],
+    });
+    const purchaseWithInvoice = attachInvoiceLink(result.purchase.id, invoiceLink) ?? result;
+
+    response.json({
+      ok: true,
+      mode: "telegram_stars",
+      mockEnabled: nodeEnv !== "production" || devShopMockEnabled,
+      purchase: purchaseWithInvoice.purchase,
+      invoice: {
+        productId: result.product.id,
+        title: result.product.title,
+        description: result.product.description,
+        starsPrice: result.product.starsPrice,
+        payload: result.purchase.id,
+        invoiceLink,
+      },
+    });
+  } catch (error) {
+    console.error("[payments] createInvoiceLink failed", {
+      playerId,
+      productId,
+      purchaseId: result.purchase.id,
+      error: error instanceof Error ? error.message : error,
+    });
+    response.status(502).json({
+      error: "Telegram invoice creation failed",
+      detail: error instanceof Error ? error.message : "Unknown error",
+      mockEnabled: nodeEnv !== "production" || devShopMockEnabled,
+    });
+  }
+});
+
+app.get("/api/payments/purchase/:purchaseId", (request: any, response: any) => {
+  const purchaseId = String(request.params.purchaseId ?? "");
+  const found = purchaseId ? findPurchaseById(purchaseId) : null;
+  if (!found) {
+    response.status(404).json({ error: "Purchase not found" });
+    return;
+  }
+
+  response.json({
+    ok: true,
+    purchase: found.purchase,
+    product: found.product,
+    reward: found.product.reward,
   });
 });
 
 app.post("/api/payments/mock-complete", (request: any, response: any) => {
-  if (nodeEnv === "production") {
-    response.status(403).json({ error: "Mock payment completion is development-only" });
+  if (nodeEnv === "production" && !devShopMockEnabled) {
+    response.status(403).json({ error: "Mock payment completion requires DEV_SHOP_MOCK=true" });
     return;
   }
 
@@ -324,6 +403,45 @@ app.post("/api/payments/mock-complete", (request: any, response: any) => {
     product: result.product,
     reward: result.product.reward,
   });
+});
+
+app.post("/api/telegram/webhook", async (request: any, response: any) => {
+  const update = request.body ?? {};
+
+  try {
+    if (update.pre_checkout_query?.id) {
+      await telegramApi<boolean>("answerPreCheckoutQuery", {
+        pre_checkout_query_id: update.pre_checkout_query.id,
+        ok: true,
+      });
+      response.json({ ok: true });
+      return;
+    }
+
+    const successfulPayment = update.message?.successful_payment;
+    if (successfulPayment?.invoice_payload) {
+      const result = completeTelegramPurchase(
+        String(successfulPayment.invoice_payload),
+        String(successfulPayment.telegram_payment_charge_id ?? ""),
+        String(successfulPayment.provider_payment_charge_id ?? ""),
+      );
+      if (!result) {
+        console.warn("[payments] successful_payment for unknown purchase", {
+          payload: successfulPayment.invoice_payload,
+        });
+      }
+      response.json({ ok: true });
+      return;
+    }
+
+    response.json({ ok: true, ignored: true });
+  } catch (error) {
+    console.error("[telegram:webhook] Failed to handle update", {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    response.status(500).json({ error: "Webhook handling failed" });
+  }
 });
 
 app.listen(port, host, () => {

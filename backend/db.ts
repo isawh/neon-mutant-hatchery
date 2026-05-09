@@ -75,9 +75,14 @@ export type PurchaseRecord = {
   playerId: string;
   productId: string;
   starsPrice: number;
-  status: "invoice_created" | "mock_completed";
+  status: "invoice_created" | "completed" | "mock_completed";
+  invoiceLink: string | null;
+  payload: string | null;
+  telegramPaymentChargeId: string | null;
+  providerPaymentChargeId: string | null;
   createdAt: string;
   completedAt: string | null;
+  rewardGrantedAt: string | null;
 };
 
 export type ReferralMilestone = {
@@ -131,9 +136,14 @@ type PurchaseRow = {
   player_id: string;
   product_id: string;
   stars_price: number;
-  status: "invoice_created" | "mock_completed";
+  status: "invoice_created" | "completed" | "mock_completed";
+  invoice_link: string | null;
+  payload: string | null;
+  telegram_payment_charge_id: string | null;
+  provider_payment_charge_id: string | null;
   created_at: string;
   completed_at: string | null;
+  reward_granted_at: string | null;
 };
 
 export const REFERRAL_MILESTONES: ReferralMilestone[] = [
@@ -284,8 +294,13 @@ db.exec(`
     product_id TEXT NOT NULL,
     stars_price INTEGER NOT NULL,
     status TEXT NOT NULL,
+    invoice_link TEXT,
+    payload TEXT,
+    telegram_payment_charge_id TEXT,
+    provider_payment_charge_id TEXT,
     created_at TEXT NOT NULL,
     completed_at TEXT,
+    reward_granted_at TEXT,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
   );
 
@@ -294,6 +309,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_referral_claims_player ON referral_milestone_claims(player_id);
   CREATE INDEX IF NOT EXISTS idx_purchases_player ON purchases(player_id);
 `);
+
+const ensureColumn = (table: string, column: string, definition: string) => {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!rows.some((row) => row.name === column)) {
+    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+  }
+};
+
+ensureColumn("purchases", "invoice_link", "TEXT");
+ensureColumn("purchases", "payload", "TEXT");
+ensureColumn("purchases", "telegram_payment_charge_id", "TEXT");
+ensureColumn("purchases", "provider_payment_charge_id", "TEXT");
+ensureColumn("purchases", "reward_granted_at", "TEXT");
 
 const mapPlayerRow = (row: PlayerRow): PlayerRecord => ({
   id: row.id,
@@ -318,8 +346,13 @@ const mapPurchaseRow = (row: PurchaseRow): PurchaseRecord => ({
   productId: row.product_id,
   starsPrice: row.stars_price,
   status: row.status,
+  invoiceLink: row.invoice_link,
+  payload: row.payload,
+  telegramPaymentChargeId: row.telegram_payment_charge_id,
+  providerPaymentChargeId: row.provider_payment_charge_id,
   createdAt: row.created_at,
   completedAt: row.completed_at,
+  rewardGrantedAt: row.reward_granted_at,
 });
 
 export const getPlayerId = (telegramUser: TelegramUser) => `tg_${telegramUser.id}`;
@@ -424,6 +457,44 @@ export const getProducts = () => PRODUCTS.filter((product) => product.enabled);
 
 export const getProductById = (productId: string) => PRODUCTS.find((product) => product.id === productId && product.enabled) ?? null;
 
+const applyProductRewardToGameState = (gameState: unknown, reward: ProductReward): unknown => {
+  if (!gameState || typeof gameState !== "object") {
+    return gameState;
+  }
+
+  const state = gameState as Record<string, unknown>;
+  const now = Date.now();
+  const numberValue = (key: string) => (typeof state[key] === "number" ? state[key] as number : 0);
+  return {
+    ...state,
+    gems: numberValue("gems") + (reward.gems ?? 0),
+    premiumCapsules: numberValue("premiumCapsules") + (reward.premiumCapsules ?? 0),
+    mutationStormTickets: numberValue("mutationStormTickets") + (reward.mutationStormTickets ?? 0),
+    incomeBoostUntil: reward.incomeBoostMinutes
+      ? now + reward.incomeBoostMinutes * 60 * 1000
+      : state.incomeBoostUntil,
+    luckyBoostUntil: reward.luckyBoostMinutes ? now + reward.luckyBoostMinutes * 60 * 1000 : state.luckyBoostUntil,
+    activeEvent: reward.mutationStormTickets
+      ? {
+          id: "mutation_storm",
+          title: "Mutation Storm",
+          description: "Ticket activated: Epic+ odds are boosted for this session.",
+          endsAt: now + 60 * 60 * 1000,
+        }
+      : state.activeEvent,
+    lastActiveAt: now,
+  };
+};
+
+export const findPurchaseById = (purchaseId: string): { product: StarsProduct; purchase: PurchaseRecord } | null => {
+  const row = db.prepare("SELECT * FROM purchases WHERE id = ?").get(purchaseId) as PurchaseRow | undefined;
+  if (!row) {
+    return null;
+  }
+  const product = getProductById(row.product_id);
+  return product ? { product, purchase: mapPurchaseRow(row) } : null;
+};
+
 export const createPurchaseInvoice = (playerId: string, productId: string): { product: StarsProduct; purchase: PurchaseRecord } | null => {
   const player = findPlayerById(playerId);
   const product = getProductById(productId);
@@ -435,13 +506,18 @@ export const createPurchaseInvoice = (playerId: string, productId: string): { pr
   const purchaseId = randomId();
   db.prepare(
     `
-      INSERT INTO purchases (id, player_id, product_id, stars_price, status, created_at, completed_at)
-      VALUES (?, ?, ?, ?, 'invoice_created', ?, NULL)
+      INSERT INTO purchases (id, player_id, product_id, stars_price, status, invoice_link, payload, created_at, completed_at, reward_granted_at)
+      VALUES (?, ?, ?, ?, 'invoice_created', NULL, ?, ?, NULL, NULL)
     `,
-  ).run(purchaseId, player.id, product.id, product.starsPrice, now);
+  ).run(purchaseId, player.id, product.id, product.starsPrice, purchaseId, now);
 
   const row = db.prepare("SELECT * FROM purchases WHERE id = ?").get(purchaseId) as PurchaseRow;
   return { product, purchase: mapPurchaseRow(row) };
+};
+
+export const attachInvoiceLink = (purchaseId: string, invoiceLink: string) => {
+  db.prepare("UPDATE purchases SET invoice_link = ? WHERE id = ?").run(invoiceLink, purchaseId);
+  return findPurchaseById(purchaseId);
 };
 
 export const completeMockPurchase = (playerId: string, productId: string): { product: StarsProduct; purchase: PurchaseRecord } | null => {
@@ -455,13 +531,55 @@ export const completeMockPurchase = (playerId: string, productId: string): { pro
   const purchaseId = randomId();
   db.prepare(
     `
-      INSERT INTO purchases (id, player_id, product_id, stars_price, status, created_at, completed_at)
-      VALUES (?, ?, ?, ?, 'mock_completed', ?, ?)
+      INSERT INTO purchases (id, player_id, product_id, stars_price, status, payload, created_at, completed_at, reward_granted_at)
+      VALUES (?, ?, ?, ?, 'mock_completed', ?, ?, ?, ?)
     `,
-  ).run(purchaseId, player.id, product.id, product.starsPrice, now, now);
+  ).run(purchaseId, player.id, product.id, product.starsPrice, purchaseId, now, now, now);
 
   const row = db.prepare("SELECT * FROM purchases WHERE id = ?").get(purchaseId) as PurchaseRow;
   return { product, purchase: mapPurchaseRow(row) };
+};
+
+export const completeTelegramPurchase = (
+  purchaseId: string,
+  telegramPaymentChargeId: string,
+  providerPaymentChargeId: string,
+): { product: StarsProduct; purchase: PurchaseRecord; save: CloudSaveRecord | null } | null => {
+  const found = findPurchaseById(purchaseId);
+  if (!found) {
+    return null;
+  }
+
+  if (found.purchase.status === "completed" || found.purchase.status === "mock_completed") {
+    return { ...found, save: loadSave(found.purchase.playerId) };
+  }
+
+  const now = new Date().toISOString();
+  const currentSave = loadSave(found.purchase.playerId);
+  const updatedSave = currentSave
+    ? writeSave(found.purchase.playerId, applyProductRewardToGameState(currentSave.gameState, found.product.reward))
+    : null;
+
+  db.prepare(
+    `
+      UPDATE purchases
+      SET status = 'completed',
+        telegram_payment_charge_id = ?,
+        provider_payment_charge_id = ?,
+        completed_at = ?,
+        reward_granted_at = ?
+      WHERE id = ?
+    `,
+  ).run(
+    telegramPaymentChargeId,
+    providerPaymentChargeId,
+    now,
+    updatedSave ? now : null,
+    found.purchase.id,
+  );
+
+  const completed = findPurchaseById(found.purchase.id);
+  return completed ? { ...completed, save: updatedSave } : null;
 };
 
 export const getReferralStats = (playerId: string): ReferralStats | null => {

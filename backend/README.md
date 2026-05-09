@@ -28,6 +28,7 @@ PORT=8080
 BOT_TOKEN=123456:replace_with_your_telegram_bot_token
 FRONTEND_URL=http://127.0.0.1:5174
 SQLITE_PATH=./data/neon-hatch.db
+DEV_SHOP_MOCK=false
 ```
 
 ## Run
@@ -68,6 +69,7 @@ NODE_ENV=production
 BOT_TOKEN=123456:replace_with_your_telegram_bot_token
 FRONTEND_URL=https://your-vercel-project.vercel.app
 SQLITE_PATH=./data/neon-hatch.db
+DEV_SHOP_MOCK=true
 ```
 
 Render sets `PORT` automatically. Do not hardcode it.
@@ -76,10 +78,18 @@ After deploy:
 
 - Open `https://your-render-service.onrender.com/health` and confirm `{ "ok": true }`.
 - Set frontend `VITE_API_URL` to the Render backend URL.
+- Configure Telegram Bot API webhook:
+
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://your-render-service.onrender.com/api/telegram/webhook"
+```
+
 - Redeploy the Vercel frontend.
 - In Telegram, launch the Mini App and confirm auth, cloud save, referrals, and mock payments reach the backend.
 
 SQLite note: this database is useful for development and an early hosted prototype, but it is not ideal for production scaling on Render. Render instances can restart and local disk behavior depends on the selected plan. Before launch, move to a managed database such as Postgres with migrations and backups.
+
+Temporary shop testing: set `DEV_SHOP_MOCK=true` on Render only while real Telegram Stars invoices are not implemented. This allows `/api/payments/mock-complete` to grant test rewards in production Telegram. Remove `DEV_SHOP_MOCK` before public launch.
 
 ## Endpoints
 
@@ -252,7 +262,7 @@ Product ids:
 
 ### `POST /api/payments/create-invoice`
 
-Creates a purchase record and returns an invoice placeholder.
+Creates a purchase record and returns a real Telegram Stars invoice link using Bot API `createInvoiceLink`.
 
 ```json
 {
@@ -261,16 +271,32 @@ Creates a purchase record and returns an invoice placeholder.
 }
 ```
 
-TODO before real Stars launch:
+Telegram Stars settings:
 
-- Use Telegram `createInvoiceLink` or `sendInvoice`.
-- Validate `pre_checkout_query`.
-- Grant rewards only after a verified `successful_payment`.
+- `currency`: `XTR`
+- `provider_token`: empty string for digital goods
+- `payload`: purchase id
+- price amount: product `starsPrice`
+
+The frontend opens the returned invoice link with `Telegram.WebApp.openInvoice`.
+
+### `POST /api/telegram/webhook`
+
+Telegram Bot API webhook endpoint.
+
+Handles:
+
+- `pre_checkout_query`: answers with `ok: true`
+- `successful_payment`: reads purchase id from invoice payload, stores Telegram charge ids, marks purchase completed, and grants rewards to the player's cloud save
+
+TODO before public launch:
+
 - Reconcile failed/expired pending purchases.
+- Add operational monitoring for payment webhook failures.
 
 ### `POST /api/payments/mock-complete`
 
-Development-only endpoint. Completes a product purchase without real Telegram Stars and returns the reward payload for the frontend to apply to the current game save.
+Development/testing endpoint. Completes a product purchase without real Telegram Stars and returns the reward payload for the frontend to apply to the current game save. In production this endpoint is disabled unless `DEV_SHOP_MOCK=true`.
 
 ```json
 {
