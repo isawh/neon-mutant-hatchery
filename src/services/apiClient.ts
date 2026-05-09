@@ -17,6 +17,9 @@ type CloudSaveResponse = {
   updatedAt: string | null;
 };
 
+const PRODUCTION_FRONTEND_HOST = "neon-mutant-hatchery.vercel.app";
+const PRODUCTION_FALLBACK_API_URL = "https://neon-mutant-hatchery.onrender.com";
+
 export type ReferralReward = {
   gems?: number;
   eggs?: number;
@@ -102,6 +105,10 @@ export type MockCompletePaymentResponse = {
   reward: BackendProduct["reward"];
 };
 
+export type BackendHealthResponse = {
+  ok: boolean;
+};
+
 export type ReferralClaimResponse = {
   ok: boolean;
   claimed: boolean;
@@ -111,9 +118,27 @@ export type ReferralClaimResponse = {
   stats?: BackendReferralStats;
 };
 
-const getApiBaseUrl = () => {
+export const getRawApiUrl = () => {
   const value = import.meta.env.VITE_API_URL;
-  return typeof value === "string" ? value.replace(/\/+$/, "") : "";
+  return typeof value === "string" ? value : "";
+};
+
+const normalizeApiBaseUrl = (value: string) => value.trim().replace(/\/+$/, "");
+
+export const getApiBaseUrl = () => {
+  const rawValue = normalizeApiBaseUrl(getRawApiUrl());
+  if (rawValue) {
+    return rawValue;
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname.includes(PRODUCTION_FRONTEND_HOST)
+  ) {
+    return PRODUCTION_FALLBACK_API_URL;
+  }
+
+  return "";
 };
 
 const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> => {
@@ -122,12 +147,20 @@ const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> =
     throw new Error("Backend API is not configured.");
   }
 
+  if (import.meta.env.DEV || (typeof window !== "undefined" && window.location.search.includes("debugApi=1"))) {
+    console.info("[api] baseUrl", baseUrl);
+  }
+
+  const headers = new Headers(options?.headers);
+  if (options?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${baseUrl}${path}`, {
+    mode: "cors",
+    credentials: "omit",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -139,6 +172,14 @@ const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> =
 };
 
 export const isBackendConfigured = () => Boolean(getApiBaseUrl());
+
+export const checkBackendHealth = async (): Promise<BackendHealthResponse | null> => {
+  if (!isBackendConfigured()) {
+    return null;
+  }
+
+  return requestJson<BackendHealthResponse>("/health");
+};
 
 export const authenticateWithTelegram = async (): Promise<ApiAuthResponse | null> => {
   if (!isBackendConfigured()) {

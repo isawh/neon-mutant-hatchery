@@ -64,9 +64,12 @@ import {
 import { getAnalyticsEventCount, trackEvent } from "./services/analyticsService";
 import {
   authenticateWithTelegram,
+  checkBackendHealth,
   claimReferralMilestoneWithBackend,
   completeMockPayment,
   createPaymentInvoice,
+  getApiBaseUrl,
+  getRawApiUrl,
   isBackendConfigured,
   loadBackendProducts,
   loadCloudSave,
@@ -192,6 +195,7 @@ const playSecretSoundPlaceholder = (creature: Creature) => {
 
 type SaveSource = "local" | "cloud";
 type PaymentsMode = "local" | "mock" | "backend";
+type BackendHealthStatus = "off" | "checking" | "ok" | "failed";
 type ShopProduct = BackendProduct;
 
 const getIncomingReferralCode = () => {
@@ -465,6 +469,8 @@ export default function App() {
   const [paymentsMode, setPaymentsMode] = useState<PaymentsMode>("local");
   const [lastPurchaseStatus, setLastPurchaseStatus] = useState("None");
   const [purchaseBusy, setPurchaseBusy] = useState(false);
+  const [backendHealthStatus, setBackendHealthStatus] = useState<BackendHealthStatus>("off");
+  const [lastBackendError, setLastBackendError] = useState("");
   const floatingCoinId = useRef(0);
   const notificationId = useRef(0);
   const didInitRef = useRef(false);
@@ -477,6 +483,8 @@ export default function App() {
   const currentOrigin = typeof window === "undefined" ? import.meta.env.VITE_PUBLIC_APP_URL : window.location.origin;
   const environmentMode = import.meta.env.MODE;
   const backendConfigured = isBackendConfigured();
+  const rawApiUrl = getRawApiUrl();
+  const resolvedApiBaseUrl = getApiBaseUrl();
   const currentPlayerId = cloudPlayerId ?? player.id;
   const lastCloudSyncLabel = lastCloudSyncAt ? new Date(lastCloudSyncAt).toLocaleTimeString() : "Never";
   const telegramViewport = getTelegramViewportState();
@@ -677,6 +685,7 @@ export default function App() {
       haptic.impact("medium");
     } catch (error) {
       console.warn("[cloud-save] Force cloud save failed; continuing with localStorage.", error);
+      setLastBackendError(error instanceof Error ? error.message : String(error));
       setBackendConnected(false);
       notify("Cloud save failed", "event");
       haptic.error();
@@ -707,6 +716,7 @@ export default function App() {
       haptic.impact("medium");
     } catch (error) {
       console.warn("[cloud-save] Force cloud load failed; continuing with localStorage.", error);
+      setLastBackendError(error instanceof Error ? error.message : String(error));
       setBackendConnected(false);
       notify("Cloud load failed", "event");
       haptic.error();
@@ -747,10 +757,21 @@ export default function App() {
 
       if (!backendConfigured) {
         cloudReadyRef.current = false;
+        setBackendHealthStatus("off");
         return;
       }
 
+      let healthOk = false;
       try {
+        setBackendHealthStatus("checking");
+        setLastBackendError("");
+        const health = await checkBackendHealth();
+        if (!health?.ok) {
+          throw new Error("Backend health check failed.");
+        }
+        healthOk = true;
+        setBackendHealthStatus("ok");
+
         const auth = await authenticateWithTelegram();
         if (!auth?.playerId) {
           throw new Error("Backend auth did not return a playerId.");
@@ -807,6 +828,10 @@ export default function App() {
         await syncBackendReferrals();
       } catch (error) {
         console.warn("[cloud-save] Backend unavailable; continuing with localStorage.", error);
+        setLastBackendError(error instanceof Error ? error.message : String(error));
+        if (!healthOk) {
+          setBackendHealthStatus("failed");
+        }
         setBackendConnected(false);
         cloudReadyRef.current = false;
       }
@@ -837,6 +862,7 @@ export default function App() {
       })
       .catch((error) => {
         console.warn("[payments] Backend products unavailable; using local mock catalog.", error);
+        setLastBackendError(error instanceof Error ? error.message : String(error));
         if (!cancelled) {
           setShopProducts(getProducts());
           setPaymentsMode("local");
@@ -1256,6 +1282,7 @@ export default function App() {
       haptic.success();
     } catch (error) {
       console.warn("[payments] Purchase flow failed; falling back to local mock when possible.", error);
+      setLastBackendError(error instanceof Error ? error.message : String(error));
       const purchase = purchaseProduct(productId);
       if (purchase) {
         applyProductReward(purchase.product.reward);
@@ -1808,6 +1835,10 @@ export default function App() {
                 <StatPill label="Origin" value={currentOrigin || "Unknown"} />
                 <StatPill label="Mode" value={environmentMode} />
                 <StatPill label="Backend" value={backendConnected ? "Yes" : backendConfigured ? "No" : "Off"} />
+                <StatPill label="API env" value={rawApiUrl || "Empty"} />
+                <StatPill label="API URL" value={resolvedApiBaseUrl || "None"} />
+                <StatPill label="Health" value={backendHealthStatus} />
+                <StatPill label="API error" value={lastBackendError || "None"} />
                 <StatPill label="Player id" value={currentPlayerId} />
                 <StatPill label="Cloud sync" value={lastCloudSyncLabel} />
                 <StatPill label="Save source" value={saveSource} />
