@@ -285,7 +285,7 @@ function CreatureVisual({
   reveal?: boolean;
 }) {
   const visualDna = creature.visualDna ?? {
-    archetype: "blob-core",
+    archetype: "orb",
     bodyShape: "blob",
     eyeType: "round",
     hornType: "antenna",
@@ -297,7 +297,7 @@ function CreatureVisual({
   return (
     <div
       className={`creature-visual creature-${creature.rarity.toLowerCase()} body-${visualDna.bodyShape} eyes-${visualDna.eyeType} horns-${visualDna.hornType} aura-${visualDna.auraStyle} pattern-${visualDna.patternStyle} mutation-${visualDna.mutationEffect} ${
-        visualDna.archetype ? `archetype-${visualDna.archetype}` : "archetype-blob-core"
+        visualDna.archetype ? `archetype-${visualDna.archetype}` : "archetype-orb"
       } ${large ? "creature-visual-large" : ""
       } ${reveal ? getRevealClass(creature.rarity) : ""}`}
       style={
@@ -432,7 +432,7 @@ function CreatureCard({
       <CreatureVisual creature={creature} />
       <div className="creature-info">
         <h3>{creature.name}</h3>
-        <p>{CREATURE_ARCHETYPE_LABELS[creature.visualDna?.archetype ?? "blob-core"] ?? "Unknown Form"}</p>
+        <p>{CREATURE_ARCHETYPE_LABELS[creature.visualDna?.archetype ?? "orb"] ?? "Unknown Form"}</p>
       </div>
       <div className="card-stat-grid">
         <span>
@@ -2428,7 +2428,7 @@ export default function App() {
               <StatPill label="Generation" value={formatNumber(detailCreature.generation)} />
               <StatPill
                 label="Archetype"
-                value={CREATURE_ARCHETYPE_LABELS[detailCreature.visualDna?.archetype ?? "blob-core"] ?? "Unknown"}
+                value={CREATURE_ARCHETYPE_LABELS[detailCreature.visualDna?.archetype ?? "orb"] ?? "Unknown"}
               />
               <StatPill label="Upgrade" value={formatNumber(getUpgradeCost(detailCreature))} />
               <StatPill label="Shard alt" value={formatNumber(getUpgradeShardCost(detailCreature))} />

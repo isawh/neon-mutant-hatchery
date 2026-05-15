@@ -2408,6 +2408,128 @@ p {
   display: block;
 }
 
+.archetype-orb { animation: orbIdle 3.2s ease-in-out infinite; }
+.archetype-orb .creature-body { inset: 18%; border-radius: 50%; transform: none; }
+.archetype-orb .creature-eye-left { left: 35%; top: 36%; }
+.archetype-orb .creature-eye-right { right: 35%; top: 36%; }
+.archetype-orb .creature-tentacle { bottom: 8%; height: 22%; opacity: 0.55; }
+.archetype-orb .creature-aura { inset: 12%; border-radius: 50%; }
+
+.archetype-tall-parasite { animation: parasiteIdle 3.6s ease-in-out infinite; }
+.archetype-tall-parasite .creature-body { inset: 6% 34% 12%; border-radius: 999px 999px 48% 48%; transform: rotate(-4deg); }
+.archetype-tall-parasite .creature-eye-left { left: 43%; top: 18%; width: 14%; }
+.archetype-tall-parasite .creature-eye-right { display: none; }
+.archetype-tall-parasite .creature-horn { top: 0; height: 26%; }
+.archetype-tall-parasite .creature-horn-left { left: 40%; transform: rotate(-8deg); }
+.archetype-tall-parasite .creature-horn-right { right: 40%; transform: rotate(8deg); }
+.archetype-tall-parasite .creature-tentacle { bottom: 0; height: 38%; }
+.archetype-tall-parasite .creature-tentacle-one { left: 32%; transform: rotate(34deg); }
+.archetype-tall-parasite .creature-tentacle-three { right: 32%; transform: rotate(-34deg); }
+.archetype-tall-parasite .creature-aura { inset: 4% 30% 4%; filter: blur(18px); }
+
+.archetype-segmented-worm { animation: wormIdle 2.8s ease-in-out infinite; }
+.archetype-segmented-worm .creature-body { inset: 38% 6% 26%; border-radius: 999px; transform: rotate(-8deg); }
+.archetype-segmented-worm .creature-body::before { inset: 12% 8%; background: repeating-linear-gradient(90deg, transparent 0 13%, rgba(255,255,255,0.28) 13% 17%); opacity: 0.7; }
+.archetype-segmented-worm .creature-eye-left { left: 18%; top: 42%; width: 9%; }
+.archetype-segmented-worm .creature-eye-right { display: none; }
+.archetype-segmented-worm .creature-horn { display: none; }
+.archetype-segmented-worm .creature-tentacle { bottom: 24%; width: 7%; height: 20%; }
+.archetype-segmented-worm .creature-tentacle-one { left: 28%; }
+.archetype-segmented-worm .creature-tentacle-two { left: 50%; }
+.archetype-segmented-worm .creature-tentacle-three { right: 20%; }
+.archetype-segmented-worm .creature-aura { inset: 28% 2% 18%; border-radius: 999px; }
+
+.archetype-floating-prism { animation: prismIdle 3.1s ease-in-out infinite; }
+.archetype-floating-prism .creature-body { inset: 10% 26% 30%; clip-path: polygon(50% 0, 96% 28%, 74% 100%, 26% 100%, 4% 28%); border-radius: 8%; transform: rotate(12deg); }
+.archetype-floating-prism .creature-eye-left { left: 45%; top: 36%; width: 11%; border-radius: 18%; transform: rotate(45deg); }
+.archetype-floating-prism .creature-eye-right { display: none; }
+.archetype-floating-prism .creature-horn { top: 20%; width: 16%; height: 16%; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.archetype-floating-prism .creature-horn-left { left: 12%; }
+.archetype-floating-prism .creature-horn-right { right: 12%; }
+.archetype-floating-prism .creature-tentacle { bottom: 18%; width: 14%; height: 14%; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); border-radius: 0; }
+.archetype-floating-prism .creature-aura { inset: 2%; background: conic-gradient(from 0deg, transparent, var(--glow), transparent, var(--accent), transparent); }
+.archetype-floating-prism .creature-particles { display: block; }
+
+.archetype-asymmetrical-blob { animation: asymBlobIdle 3.4s ease-in-out infinite; }
+.archetype-asymmetrical-blob .creature-body { inset: 22% 8% 16% 24%; border-radius: 32% 68% 44% 56% / 62% 36% 64% 38%; transform: rotate(-13deg); }
+.archetype-asymmetrical-blob .creature-eye-left { left: 38%; top: 30%; width: 16%; }
+.archetype-asymmetrical-blob .creature-eye-right { right: 22%; top: 48%; width: 9%; }
+.archetype-asymmetrical-blob .creature-horn-left { left: 20%; top: 18%; }
+.archetype-asymmetrical-blob .creature-horn-right { right: 12%; top: 38%; transform: rotate(58deg); }
+.archetype-asymmetrical-blob .creature-tentacle-one { left: 18%; bottom: 12%; }
+.archetype-asymmetrical-blob .creature-tentacle-two { left: 64%; bottom: 2%; height: 24%; }
+.archetype-asymmetrical-blob .creature-tentacle-three { right: 10%; bottom: 26%; height: 18%; }
+.archetype-asymmetrical-blob .creature-aura { inset: 20% 6% 12% 18%; border-radius: 35% 65% 46% 54%; }
+
+.archetype-crystalline-cluster { animation: crystalClusterIdle 3s ease-in-out infinite; }
+.archetype-crystalline-cluster .creature-body { inset: 20% 20% 18%; clip-path: polygon(48% 0, 66% 28%, 100% 18%, 78% 54%, 92% 100%, 50% 78%, 12% 100%, 24% 55%, 0 22%, 34% 28%); border-radius: 0; }
+.archetype-crystalline-cluster .creature-eye-left { left: 36%; top: 42%; width: 10%; border-radius: 20%; transform: rotate(45deg); }
+.archetype-crystalline-cluster .creature-eye-right { right: 36%; top: 42%; width: 10%; border-radius: 20%; transform: rotate(45deg); }
+.archetype-crystalline-cluster .creature-horn { width: 18%; height: 28%; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.archetype-crystalline-cluster .creature-tentacle { display: none; }
+.archetype-crystalline-cluster .creature-aura { inset: 4%; background: conic-gradient(from 45deg, transparent, var(--glow), transparent, var(--accent), transparent); }
+
+.archetype-tripod-reactor { animation: reactorIdle 2.7s ease-in-out infinite; }
+.archetype-tripod-reactor .creature-body { inset: 18% 23% 34%; border-radius: 50%; box-shadow: inset 0 0 0 12px rgba(5,7,19,0.32), 0 0 36px var(--glow); }
+.archetype-tripod-reactor .creature-eye-left,
+.archetype-tripod-reactor .creature-eye-right { display: none; }
+.archetype-tripod-reactor .creature-body::after { left: 35%; right: auto; bottom: 34%; width: 30%; height: 30%; border-radius: 50%; background: radial-gradient(circle, #fff 0 16%, var(--eye) 17% 42%, transparent 43%); filter: none; opacity: 1; box-shadow: 0 0 22px var(--eye); }
+.archetype-tripod-reactor .creature-horn { top: 14%; width: 14%; height: 14%; border-radius: 50%; clip-path: none; }
+.archetype-tripod-reactor .creature-tentacle { bottom: 8%; width: 9%; height: 34%; transform-origin: top center; }
+.archetype-tripod-reactor .creature-tentacle-one { left: 28%; transform: rotate(28deg); }
+.archetype-tripod-reactor .creature-tentacle-two { left: 46%; transform: rotate(0); }
+.archetype-tripod-reactor .creature-tentacle-three { right: 28%; transform: rotate(-28deg); }
+.archetype-tripod-reactor .creature-aura { inset: 8%; background: radial-gradient(circle, var(--glow), transparent 46%), conic-gradient(from 0deg, transparent, var(--accent), transparent); }
+
+.archetype-split-body-mutant { animation: splitBodyIdle 2.6s steps(2, end) infinite; }
+.archetype-split-body-mutant .creature-body { inset: 20% 13% 20%; border-radius: 44% 56% 38% 62%; clip-path: polygon(0 8%, 45% 0, 42% 100%, 0 86%, 0 8%, 58% 0, 100% 12%, 100% 88%, 56% 100%, 58% 0); }
+.archetype-split-body-mutant .creature-eye-left { left: 28%; top: 34%; }
+.archetype-split-body-mutant .creature-eye-right { right: 23%; top: 54%; }
+.archetype-split-body-mutant .creature-horn-left { left: 18%; top: 8%; transform: rotate(-38deg); }
+.archetype-split-body-mutant .creature-horn-right { right: 12%; top: 16%; transform: rotate(48deg); }
+.archetype-split-body-mutant .creature-tentacle-one { left: 18%; }
+.archetype-split-body-mutant .creature-tentacle-two { display: none; }
+.archetype-split-body-mutant .creature-tentacle-three { right: 12%; }
+.archetype-split-body-mutant .creature-aura { inset: 8%; box-shadow: 4px 0 0 var(--pink), -4px 0 0 var(--cyan); }
+
+.archetype-halo-organism { animation: haloOrganismIdle 3.4s ease-in-out infinite; }
+.archetype-halo-organism .creature-body { inset: 34% 28% 24%; border-radius: 50% 50% 46% 46%; transform: scale(0.78); }
+.archetype-halo-organism .creature-eye-left { left: 43%; top: 50%; width: 14%; }
+.archetype-halo-organism .creature-eye-right { display: none; }
+.archetype-halo-organism .creature-horn { top: 6%; left: 18%; right: auto; width: 64%; height: 20%; border: 3px solid var(--accent); border-radius: 50%; background: transparent; clip-path: none; transform: none; }
+.archetype-halo-organism .creature-horn-right { display: none; }
+.archetype-halo-organism .creature-tentacle { bottom: 12%; height: 16%; opacity: 0.65; }
+.archetype-halo-organism .creature-aura { inset: 2% 8% 18%; border: 2px solid var(--glow); background: transparent; filter: blur(5px); }
+
+.archetype-jellyfish-entity { animation: jellyfishIdle 3s ease-in-out infinite; }
+.archetype-jellyfish-entity .creature-body { inset: 14% 18% 42%; border-radius: 62% 38% 48% 52% / 72% 72% 28% 28%; }
+.archetype-jellyfish-entity .creature-eye-left { left: 35%; top: 30%; }
+.archetype-jellyfish-entity .creature-eye-right { right: 35%; top: 30%; }
+.archetype-jellyfish-entity .creature-horn { display: none; }
+.archetype-jellyfish-entity .creature-tentacle { bottom: 4%; height: 52%; width: 8%; border-radius: 999px; }
+.archetype-jellyfish-entity .creature-tentacle-one { left: 30%; transform: rotate(10deg); }
+.archetype-jellyfish-entity .creature-tentacle-two { left: 46%; }
+.archetype-jellyfish-entity .creature-tentacle-three { right: 30%; transform: rotate(-10deg); }
+.archetype-jellyfish-entity .creature-aura { inset: 10% 12% 2%; filter: blur(26px); }
+
+.archetype-biomech-eye { animation: biomechEyeIdle 2.9s ease-in-out infinite; }
+.archetype-biomech-eye .creature-body { inset: 28% 8% 24%; border-radius: 999px; transform: scaleX(1.1); box-shadow: inset 0 0 0 8px rgba(5,7,19,0.32), 0 0 26px var(--glow); }
+.archetype-biomech-eye .creature-eye-left { left: 42%; top: 42%; width: 18%; border: 3px solid var(--eye); background: transparent; }
+.archetype-biomech-eye .creature-eye-right { display: none; }
+.archetype-biomech-eye .creature-horn { top: 37%; width: 18%; height: 10%; border-radius: 999px; clip-path: none; }
+.archetype-biomech-eye .creature-horn-left { left: 8%; transform: rotate(0); }
+.archetype-biomech-eye .creature-horn-right { right: 8%; transform: rotate(0); }
+.archetype-biomech-eye .creature-tentacle { bottom: 22%; height: 16%; width: 12%; }
+.archetype-biomech-eye .creature-aura { inset: 24% 0 20%; border-radius: 999px; }
+
+.archetype-spiral-core { animation: spiralCoreIdle 2.8s linear infinite; }
+.archetype-spiral-core .creature-body { inset: 15% 15% 15%; border-radius: 50%; background: conic-gradient(from 0deg, var(--body), var(--accent), var(--glow), var(--body)); box-shadow: inset 0 0 0 10px rgba(5,7,19,0.24), 0 0 34px var(--glow); }
+.archetype-spiral-core .creature-eye-left { left: 44%; top: 44%; width: 14%; background: #050713; border: 2px solid var(--eye); }
+.archetype-spiral-core .creature-eye-right { display: none; }
+.archetype-spiral-core .creature-horn { top: 10%; width: 18%; height: 18%; border-radius: 50%; clip-path: none; background: transparent; border: 2px solid var(--accent); }
+.archetype-spiral-core .creature-tentacle { bottom: 16%; width: 10%; height: 22%; opacity: 0.65; }
+.archetype-spiral-core .creature-aura { inset: -4%; background: conic-gradient(from 0deg, transparent, var(--glow), transparent, var(--accent), transparent); }
+
 .pattern-spots .creature-body::before { background: radial-gradient(circle at 25% 28%, var(--accent) 0 10%, transparent 11%), radial-gradient(circle at 70% 62%, var(--glow) 0 8%, transparent 9%); }
 .pattern-stripes .creature-body::before { background: repeating-linear-gradient(90deg, transparent 0 12%, color-mix(in srgb, var(--accent), transparent 30%) 12% 18%); }
 .pattern-ridges .creature-body::before { background: repeating-linear-gradient(105deg, transparent 0 11%, rgba(255, 255, 255, 0.28) 11% 14%); }
@@ -4127,6 +4249,66 @@ p {
   50% {
     transform: scale(1.18);
   }
+}
+
+@keyframes orbIdle {
+  0%, 100% { transform: rotate(var(--tilt)) translateY(0) scale(1); }
+  50% { transform: rotate(var(--tilt)) translateY(-5px) scale(1.035); }
+}
+
+@keyframes parasiteIdle {
+  0%, 100% { transform: rotate(calc(var(--tilt) - 3deg)) translateY(0); }
+  50% { transform: rotate(calc(var(--tilt) + 4deg)) translateY(-7px); }
+}
+
+@keyframes wormIdle {
+  0%, 100% { transform: rotate(var(--tilt)) translateX(-2px); }
+  50% { transform: rotate(calc(var(--tilt) + 4deg)) translateX(3px); }
+}
+
+@keyframes prismIdle {
+  0%, 100% { transform: rotate(calc(var(--tilt) - 6deg)) translateY(-3px); }
+  50% { transform: rotate(calc(var(--tilt) + 10deg)) translateY(-10px); }
+}
+
+@keyframes asymBlobIdle {
+  0%, 100% { transform: rotate(calc(var(--tilt) - 4deg)) scaleX(1.04); }
+  50% { transform: rotate(calc(var(--tilt) + 5deg)) scaleX(0.96) scaleY(1.06); }
+}
+
+@keyframes crystalClusterIdle {
+  0%, 100% { transform: rotate(var(--tilt)) translateY(0); filter: saturate(1.1); }
+  50% { transform: rotate(calc(var(--tilt) + 7deg)) translateY(-6px); filter: saturate(1.55); }
+}
+
+@keyframes reactorIdle {
+  0%, 100% { transform: rotate(var(--tilt)) scale(1); }
+  50% { transform: rotate(var(--tilt)) scale(1.05); }
+}
+
+@keyframes splitBodyIdle {
+  0%, 100% { transform: rotate(var(--tilt)) translateX(0); filter: hue-rotate(0deg); }
+  50% { transform: rotate(calc(var(--tilt) + 3deg)) translateX(2px); filter: hue-rotate(40deg); }
+}
+
+@keyframes haloOrganismIdle {
+  0%, 100% { transform: rotate(var(--tilt)) translateY(0); }
+  50% { transform: rotate(calc(var(--tilt) - 5deg)) translateY(-8px); }
+}
+
+@keyframes jellyfishIdle {
+  0%, 100% { transform: rotate(var(--tilt)) translateY(0) scaleY(1); }
+  50% { transform: rotate(var(--tilt)) translateY(-6px) scaleY(1.05); }
+}
+
+@keyframes biomechEyeIdle {
+  0%, 100% { transform: rotate(var(--tilt)) scaleX(1); }
+  50% { transform: rotate(var(--tilt)) scaleX(1.08) scaleY(0.98); }
+}
+
+@keyframes spiralCoreIdle {
+  0% { transform: rotate(var(--tilt)); filter: hue-rotate(0deg); }
+  100% { transform: rotate(calc(var(--tilt) + 360deg)); filter: hue-rotate(80deg); }
 }
 
 @keyframes revealRoomPulse {

@@ -515,63 +515,55 @@ const ARCHETYPE_DNA: Record<
     mutationEffect: string[];
   }
 > = {
-  "blob-core": {
-    bodyShape: ["blob", "orb", "bud"],
+  orb: {
+    bodyShape: ["orb", "disc", "bud"],
     eyeType: ["round", "wide", "mono"],
     hornType: ["none", "short", "antenna"],
     auraStyle: ["soft", "ring"],
     patternStyle: ["spots", "ridges", "none"],
     mutationEffect: ["ripple", "dust", "spark"],
   },
-  "crystal-mutant": {
-    bodyShape: ["crystal", "poly", "spindle"],
+  "tall-parasite": {
+    bodyShape: ["spindle", "tendril", "asym"],
+    eyeType: ["slit", "mono", "void"],
+    hornType: ["antenna", "curved", "forked"],
+    auraStyle: ["mist", "static", "pulse"],
+    patternStyle: ["veins", "cells", "ridges"],
+    mutationEffect: ["drip", "scan", "ripple"],
+  },
+  "segmented-worm": {
+    bodyShape: ["spindle", "helix", "tendril"],
+    eyeType: ["slit", "wide", "triple"],
+    hornType: ["none", "short", "antenna"],
+    auraStyle: ["soft", "mist", "pulse"],
+    patternStyle: ["rings", "stripes", "cells"],
+    mutationEffect: ["ripple", "drip", "smoke"],
+  },
+  "floating-prism": {
+    bodyShape: ["crystal", "poly", "vector"],
     eyeType: ["diamond", "spark", "ring"],
     hornType: ["crystal", "spikes", "forked"],
     auraStyle: ["flare", "radial", "halo"],
     patternStyle: ["cracks", "veins", "chevrons"],
     mutationEffect: ["shimmer", "flare", "spark"],
   },
-  "floating-shard": {
-    bodyShape: ["disc", "poly", "crystal"],
-    eyeType: ["visor", "ring", "void"],
-    hornType: ["halo", "crystal", "none"],
-    auraStyle: ["comet", "radial", "mist"],
-    patternStyle: ["stars", "rings", "circuit"],
-    mutationEffect: ["orbit", "shimmer", "spark"],
-  },
-  "parasite-node": {
-    bodyShape: ["node", "asym", "tendril"],
+  "asymmetrical-blob": {
+    bodyShape: ["asym", "blob", "node"],
     eyeType: ["triple", "slit", "mono"],
     hornType: ["antenna", "forked", "short"],
     auraStyle: ["static", "mist", "pulse"],
     patternStyle: ["cells", "veins", "spots"],
     mutationEffect: ["drip", "scan", "ripple"],
   },
-  "biotech-shell": {
-    bodyShape: ["disc", "vector", "poly"],
-    eyeType: ["visor", "slit", "diamond"],
-    hornType: ["fin", "spikes", "short"],
-    auraStyle: ["ring", "static", "pulse"],
-    patternStyle: ["circuit", "scales", "ridges"],
-    mutationEffect: ["scan", "spark", "shimmer"],
+  "crystalline-cluster": {
+    bodyShape: ["crystal", "poly", "spindle"],
+    eyeType: ["diamond", "ring", "spark"],
+    hornType: ["crystal", "spikes", "halo"],
+    auraStyle: ["radial", "flare", "comet"],
+    patternStyle: ["cracks", "chevrons", "stars"],
+    mutationEffect: ["shimmer", "orbit", "flare"],
   },
-  "glitch-orb": {
-    bodyShape: ["orb", "asym", "poly"],
-    eyeType: ["glitch", "void", "mono"],
-    hornType: ["halo", "none", "antenna"],
-    auraStyle: ["glitch", "static", "radial"],
-    patternStyle: ["circuit", "cracks", "rings"],
-    mutationEffect: ["glitch", "scan", "ripple"],
-  },
-  "tentacle-mass": {
-    bodyShape: ["tendril", "blob", "asym"],
-    eyeType: ["triple", "wide", "void"],
-    hornType: ["forked", "antenna", "none"],
-    auraStyle: ["mist", "pulse", "flare"],
-    patternStyle: ["veins", "cells", "spots"],
-    mutationEffect: ["drip", "orbit", "ripple"],
-  },
-  "reactor-core": {
+  "tripod-reactor": {
     bodyShape: ["orb", "disc", "helix"],
     eyeType: ["ring", "visor", "spark"],
     hornType: ["halo", "fin", "crystal"],
@@ -579,37 +571,45 @@ const ARCHETYPE_DNA: Record<
     patternStyle: ["rings", "circuit", "stars"],
     mutationEffect: ["shimmer", "flare", "scan"],
   },
-  "broken-angel": {
-    bodyShape: ["spindle", "helix", "vector"],
-    eyeType: ["void", "ring", "visor"],
+  "split-body-mutant": {
+    bodyShape: ["vector", "asym", "poly"],
+    eyeType: ["visor", "void", "diamond"],
+    hornType: ["forked", "spikes", "crystal"],
+    auraStyle: ["static", "radial", "glitch"],
+    patternStyle: ["cracks", "circuit", "chevrons"],
+    mutationEffect: ["glitch", "ripple", "scan"],
+  },
+  "halo-organism": {
+    bodyShape: ["disc", "orb", "spindle"],
+    eyeType: ["ring", "mono", "visor"],
     hornType: ["halo", "long", "crystal"],
     auraStyle: ["halo", "comet", "flare"],
-    patternStyle: ["cracks", "stars", "veins"],
+    patternStyle: ["stars", "rings", "veins"],
     mutationEffect: ["shimmer", "orbit", "flare"],
   },
-  "void-larva": {
-    bodyShape: ["spindle", "blob", "asym"],
-    eyeType: ["void", "slit", "glitch"],
-    hornType: ["none", "antenna", "curved"],
-    auraStyle: ["mist", "glitch", "soft"],
-    patternStyle: ["rings", "cracks", "none"],
-    mutationEffect: ["smoke", "drip", "glitch"],
+  "jellyfish-entity": {
+    bodyShape: ["blob", "disc", "tendril"],
+    eyeType: ["wide", "ring", "void"],
+    hornType: ["none", "antenna", "halo"],
+    auraStyle: ["mist", "pulse", "soft"],
+    patternStyle: ["veins", "cells", "spots"],
+    mutationEffect: ["drip", "orbit", "ripple"],
   },
-  "plasma-bug": {
-    bodyShape: ["node", "disc", "vector"],
-    eyeType: ["spark", "triple", "diamond"],
-    hornType: ["antenna", "spikes", "forked"],
-    auraStyle: ["static", "pulse", "flare"],
-    patternStyle: ["stripes", "cells", "circuit"],
-    mutationEffect: ["spark", "flare", "orbit"],
+  "biomech-eye": {
+    bodyShape: ["disc", "vector", "poly"],
+    eyeType: ["visor", "slit", "diamond"],
+    hornType: ["fin", "spikes", "short"],
+    auraStyle: ["ring", "static", "pulse"],
+    patternStyle: ["circuit", "scales", "ridges"],
+    mutationEffect: ["scan", "spark", "shimmer"],
   },
-  "geometric-embryo": {
-    bodyShape: ["poly", "vector", "crystal"],
-    eyeType: ["diamond", "mono", "ring"],
-    hornType: ["crystal", "halo", "fin"],
-    auraStyle: ["radial", "ring", "comet"],
-    patternStyle: ["chevrons", "rings", "circuit"],
-    mutationEffect: ["scan", "shimmer", "ripple"],
+  "spiral-core": {
+    bodyShape: ["helix", "orb", "disc"],
+    eyeType: ["glitch", "void", "mono"],
+    hornType: ["halo", "none", "antenna"],
+    auraStyle: ["glitch", "static", "radial"],
+    patternStyle: ["circuit", "cracks", "rings"],
+    mutationEffect: ["glitch", "scan", "ripple"],
   },
 };
 
@@ -622,21 +622,21 @@ const pickArchetype = (rarity: Rarity, parents: Creature[]) => {
   }
 
   if (rarity === "Secret") {
-    return sample(["glitch-orb", "void-larva", "broken-angel"]);
+    return sample(["spiral-core", "split-body-mutant", "halo-organism"]);
   }
   if (rarity === "Mythic") {
-    return sample(["reactor-core", "broken-angel", "floating-shard", "geometric-embryo"]);
+    return sample(["tripod-reactor", "halo-organism", "floating-prism", "spiral-core"]);
   }
   if (rarity === "Legendary") {
-    return sample(["crystal-mutant", "biotech-shell", "tentacle-mass", "reactor-core", "broken-angel"]);
+    return sample(["crystalline-cluster", "tripod-reactor", "split-body-mutant", "halo-organism", "biomech-eye"]);
   }
   if (rarity === "Epic") {
-    return sample(["floating-shard", "parasite-node", "biotech-shell", "plasma-bug", "geometric-embryo"]);
+    return sample(["floating-prism", "segmented-worm", "biomech-eye", "jellyfish-entity", "spiral-core"]);
   }
   if (rarity === "Rare") {
-    return sample(["crystal-mutant", "parasite-node", "biotech-shell", "plasma-bug"]);
+    return sample(["tall-parasite", "floating-prism", "biomech-eye", "asymmetrical-blob"]);
   }
-  return sample(["blob-core", "parasite-node", "void-larva", "geometric-embryo"]);
+  return sample(["orb", "segmented-worm", "asymmetrical-blob", "jellyfish-entity"]);
 };
 
 const pickVisualDna = (rarity: Rarity, parents: Creature[]) => {
@@ -646,7 +646,7 @@ const pickVisualDna = (rarity: Rarity, parents: Creature[]) => {
 
   const rarityRankValue = RARITY_ORDER.indexOf(rarity);
   const archetype = pickArchetype(rarity, parents);
-  const archetypeDna = ARCHETYPE_DNA[archetype] ?? ARCHETYPE_DNA["blob-core"];
+  const archetypeDna = ARCHETYPE_DNA[archetype] ?? ARCHETYPE_DNA.orb;
   if (rarity === "Secret") {
     return {
       archetype,
@@ -896,7 +896,7 @@ const mutateFusionCreature = (creature: Creature, parents: Creature[], unstable:
       eye: "#050713",
     },
     visualDna: {
-      archetype: sample(["glitch-orb", "void-larva", "broken-angel"]),
+      archetype: sample(["spiral-core", "split-body-mutant", "halo-organism"]),
       bodyShape: sample(["asym", "poly", "crystal"]),
       eyeType: sample(["glitch", "void", "ring"]),
       hornType: sample(["halo", "forked", "crystal"]),
