@@ -3,6 +3,8 @@ import {
   AURA_STYLES,
   BODY_SHAPES,
   BREED_COIN_COST,
+  CREATURE_ARCHETYPES,
+  CREATURE_ARCHETYPE_LABELS,
   DAILY_LOGIN_REWARDS,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
@@ -125,6 +127,10 @@ const checks: Check[] = [
       assert(EVENT_ROTATION_INTERVAL_MS > 0, "Event rotation interval must be positive");
       assert(RARE_EVENTS.length >= 4 && unique(RARE_EVENTS.map((event) => event.id)), "Live event ids invalid");
       assert(BODY_SHAPES.length >= 12 && unique(BODY_SHAPES), "Body shape variety invalid");
+      assert(CREATURE_ARCHETYPES.length >= 12 && unique(CREATURE_ARCHETYPES), "Creature archetype variety invalid");
+      CREATURE_ARCHETYPES.forEach((archetype) => {
+        assert(CREATURE_ARCHETYPE_LABELS[archetype], `Missing archetype label for ${archetype}`);
+      });
       assert(EYE_TYPES.length >= 12 && unique(EYE_TYPES), "Eye type variety invalid");
       assert(HORN_TYPES.length >= 10 && unique(HORN_TYPES), "Horn type variety invalid");
       assert(AURA_STYLES.length >= 10 && unique(AURA_STYLES), "Aura style variety invalid");

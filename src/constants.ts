@@ -181,6 +181,36 @@ export const BODY_SHAPES = [
   "crystal",
 ];
 
+export const CREATURE_ARCHETYPES = [
+  "blob-core",
+  "crystal-mutant",
+  "floating-shard",
+  "parasite-node",
+  "biotech-shell",
+  "glitch-orb",
+  "tentacle-mass",
+  "reactor-core",
+  "broken-angel",
+  "void-larva",
+  "plasma-bug",
+  "geometric-embryo",
+];
+
+export const CREATURE_ARCHETYPE_LABELS: Record<string, string> = {
+  "blob-core": "Blob Core",
+  "crystal-mutant": "Crystal Mutant",
+  "floating-shard": "Floating Shard",
+  "parasite-node": "Parasite Node",
+  "biotech-shell": "Biotech Shell",
+  "glitch-orb": "Glitch Orb",
+  "tentacle-mass": "Tentacle Mass",
+  "reactor-core": "Reactor Core",
+  "broken-angel": "Broken Angel",
+  "void-larva": "Void Larva",
+  "plasma-bug": "Plasma Bug",
+  "geometric-embryo": "Geometric Embryo",
+};
+
 export const EYE_TYPES = [
   "round",
   "slit",

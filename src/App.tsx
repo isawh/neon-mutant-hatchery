@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   DEV_SAVE_RESET_VERSION,
+  CREATURE_ARCHETYPE_LABELS,
   DAILY_LOGIN_REWARDS,
   INITIAL_STATE,
   INVITE_MILESTONES,
@@ -284,6 +285,7 @@ function CreatureVisual({
   reveal?: boolean;
 }) {
   const visualDna = creature.visualDna ?? {
+    archetype: "blob-core",
     bodyShape: "blob",
     eyeType: "round",
     hornType: "antenna",
@@ -295,7 +297,8 @@ function CreatureVisual({
   return (
     <div
       className={`creature-visual creature-${creature.rarity.toLowerCase()} body-${visualDna.bodyShape} eyes-${visualDna.eyeType} horns-${visualDna.hornType} aura-${visualDna.auraStyle} pattern-${visualDna.patternStyle} mutation-${visualDna.mutationEffect} ${
-        large ? "creature-visual-large" : ""
+        visualDna.archetype ? `archetype-${visualDna.archetype}` : "archetype-blob-core"
+      } ${large ? "creature-visual-large" : ""
       } ${reveal ? getRevealClass(creature.rarity) : ""}`}
       style={
         {
@@ -429,16 +432,16 @@ function CreatureCard({
       <CreatureVisual creature={creature} />
       <div className="creature-info">
         <h3>{creature.name}</h3>
-        <p>{formatNumber(income)} coins/min</p>
+        <p>{CREATURE_ARCHETYPE_LABELS[creature.visualDna?.archetype ?? "blob-core"] ?? "Unknown Form"}</p>
       </div>
       <div className="card-stat-grid">
         <span>
-          <strong>{creature.level}</strong>
-          Level
+          <strong>{formatNumber(income)}</strong>
+          /min
         </span>
         <span>
-          <strong>{creature.generation}</strong>
-          Gen
+          <strong>{creature.level}</strong>
+          Level
         </span>
         <span>
           <strong>{formatNumber(getPowerScore(creature))}</strong>
@@ -1674,6 +1677,15 @@ export default function App() {
                     <span />
                   </div>
                   <div className="scanline" />
+                  {isHatching && revealRarity ? (
+                    <div className={`hatch-fakeout fakeout-${revealRarity.toLowerCase()}`} aria-hidden="true">
+                      {RARITY_ORDER.map((rarity) => (
+                        <span key={rarity} className={`rarity-text-${rarity.toLowerCase()}`}>
+                          {rarity}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className={`capsule ${isHatching ? "capsule-hatching" : ""}`}>
                     <span className="capsule-crack capsule-crack-one" />
                     <span className="capsule-crack capsule-crack-two" />
@@ -2414,6 +2426,10 @@ export default function App() {
               <StatPill label="Income/min" value={formatNumber(getCreatureIncomePerMinute(detailCreature))} />
               <StatPill label="Level" value={formatNumber(detailCreature.level)} />
               <StatPill label="Generation" value={formatNumber(detailCreature.generation)} />
+              <StatPill
+                label="Archetype"
+                value={CREATURE_ARCHETYPE_LABELS[detailCreature.visualDna?.archetype ?? "blob-core"] ?? "Unknown"}
+              />
               <StatPill label="Upgrade" value={formatNumber(getUpgradeCost(detailCreature))} />
               <StatPill label="Shard alt" value={formatNumber(getUpgradeShardCost(detailCreature))} />
             </div>

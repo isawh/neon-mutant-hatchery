@@ -87,6 +87,7 @@ export type ActiveRareEvent = {
 };
 
 export type CreatureVisualDna = {
+  archetype: string;
   bodyShape: string;
   eyeType: string;
   hornType: string;
