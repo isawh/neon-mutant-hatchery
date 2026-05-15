@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   CREATURE_ARCHETYPES,
+  CREATURE_ARCHETYPE_ALIASES,
   DEV_SAVE_RESET_VERSION,
   CREATURE_ARCHETYPE_LABELS,
   DAILY_LOGIN_REWARDS,
@@ -286,7 +287,7 @@ function CreatureVisual({
   reveal?: boolean;
 }) {
   const visualDna = creature.visualDna ?? {
-    archetype: "orb",
+    archetype: "jelly-mascot",
     bodyShape: "blob",
     eyeType: "round",
     hornType: "antenna",
@@ -294,7 +295,9 @@ function CreatureVisual({
     patternStyle: "spots",
     mutationEffect: "spark",
   };
-  const archetype = visualDna.archetype || "orb";
+  const archetype = CREATURE_ARCHETYPES.includes(visualDna.archetype)
+    ? visualDna.archetype
+    : CREATURE_ARCHETYPE_ALIASES[visualDna.archetype] ?? "jelly-mascot";
   const bodyClass = `creature-body--${archetype}`;
 
   return (
@@ -442,7 +445,11 @@ function CreatureCard({
       <CreatureVisual creature={creature} />
       <div className="creature-info">
         <h3>{creature.name}</h3>
-        <p>{CREATURE_ARCHETYPE_LABELS[creature.visualDna?.archetype ?? "orb"] ?? "Unknown Form"}</p>
+        <p>
+          {CREATURE_ARCHETYPE_LABELS[
+            CREATURE_ARCHETYPE_ALIASES[creature.visualDna?.archetype ?? ""] ?? creature.visualDna?.archetype ?? "jelly-mascot"
+          ] ?? "Unknown Form"}
+        </p>
       </div>
       <div className="card-stat-grid">
         <span>
@@ -2493,7 +2500,13 @@ export default function App() {
               <StatPill label="Generation" value={formatNumber(detailCreature.generation)} />
               <StatPill
                 label="Archetype"
-                value={CREATURE_ARCHETYPE_LABELS[detailCreature.visualDna?.archetype ?? "orb"] ?? "Unknown"}
+                value={
+                  CREATURE_ARCHETYPE_LABELS[
+                    CREATURE_ARCHETYPE_ALIASES[detailCreature.visualDna?.archetype ?? ""] ??
+                      detailCreature.visualDna?.archetype ??
+                      "jelly-mascot"
+                  ] ?? "Unknown"
+                }
               />
               <StatPill label="Upgrade" value={formatNumber(getUpgradeCost(detailCreature))} />
               <StatPill label="Shard alt" value={formatNumber(getUpgradeShardCost(detailCreature))} />

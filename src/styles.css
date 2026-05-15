@@ -2192,6 +2192,7 @@ p {
 .body-tendril .creature-body { inset: 22% 20% 18%; border-radius: 50%; }
 .body-poly .creature-body { inset: 20% 18% 18%; border-radius: 50% 50% 44% 44% / 64% 64% 36% 36%; }
 .body-bud .creature-body { inset: 18% 20% 18%; border-radius: 52% 48% 44% 56% / 62% 58% 42% 38%; }
+.body-bean .creature-body { inset: 24% 14% 18%; border-radius: 62% 38% 60% 40% / 42% 64% 36% 58%; }
 .body-orb .creature-body { inset: 20%; border-radius: 50%; }
 .body-spindle .creature-body { inset: 14% 22% 12%; border-radius: 999px; }
 .body-crystal .creature-body { inset: 18% 18% 18%; border-radius: 18% 44% 22% 42%; clip-path: polygon(50% 0, 92% 28%, 78% 92%, 22% 92%, 8% 28%); }
@@ -3135,6 +3136,469 @@ p {
   opacity: 0.72;
   pointer-events: none;
   animation: secretBodyGlitch 900ms steps(2, end) infinite;
+}
+
+.creature-visual {
+  --cute-face: radial-gradient(circle at 50% 64%, rgba(255, 255, 255, 0.18), transparent 25%);
+}
+
+.creature-body--jelly-mascot,
+.creature-body--floating-puff,
+.creature-body--halo-jellyfish,
+.creature-body--neon-axolotl-like-organism {
+  animation: mascotBob 3.3s ease-in-out infinite;
+}
+
+.creature-body--neon-slug,
+.creature-body--plasma-tadpole,
+.creature-body--prism-hopper,
+.creature-body--quantum-bean {
+  animation: mascotWobble 3s ease-in-out infinite;
+}
+
+.creature-body--tiny-reactor-pet,
+.creature-body--baby-reactor-core,
+.creature-body--spiral-floater {
+  animation: mascotPulse 2.8s ease-in-out infinite;
+}
+
+.creature-body--crystal-bunny-blob,
+.creature-body--antenna-creature,
+.creature-body--star-parasite,
+.creature-body--sleepy-biomech-orb {
+  animation: mascotBlinkFloat 3.4s ease-in-out infinite;
+}
+
+.creature-body--jelly-mascot .creature-body {
+  inset: 20% 18% 16%;
+  border-radius: 54% 46% 48% 52% / 52% 56% 44% 48%;
+  clip-path: none;
+  transform: none;
+  background: var(--cute-face), linear-gradient(150deg, color-mix(in srgb, var(--body), white 14%), var(--body) 58%, color-mix(in srgb, var(--accent), var(--body) 45%));
+}
+
+.creature-body--jelly-mascot .creature-eye { top: 36%; width: 15%; }
+.creature-body--jelly-mascot .creature-eye-left { left: 32%; }
+.creature-body--jelly-mascot .creature-eye-right { right: 32%; }
+.creature-body--jelly-mascot .creature-mouth { left: 43%; bottom: 33%; width: 14%; border-bottom-color: rgba(5, 7, 19, 0.5); }
+.creature-body--jelly-mascot .creature-horn { display: none; }
+.creature-body--jelly-mascot .creature-tentacle { bottom: 8%; height: 18%; width: 9%; opacity: 0.7; }
+.creature-body--jelly-mascot .creature-aura { inset: 14%; opacity: 0.24; }
+
+.creature-body--neon-slug .creature-body {
+  inset: 36% 8% 18%;
+  border-radius: 68% 32% 54% 46% / 52% 66% 34% 48%;
+  clip-path: none;
+  transform: rotate(-3deg);
+  background: var(--cute-face), linear-gradient(145deg, var(--body), color-mix(in srgb, var(--body), #050713 24%));
+}
+
+.creature-body--neon-slug .creature-eye { top: 35%; width: 10%; }
+.creature-body--neon-slug .creature-eye-left { left: 24%; }
+.creature-body--neon-slug .creature-eye-right { right: 60%; }
+.creature-body--neon-slug .creature-mouth { left: 26%; bottom: 28%; width: 12%; }
+.creature-body--neon-slug .creature-horn { top: 25%; width: 4%; height: 24%; border-radius: 999px; clip-path: none; }
+.creature-body--neon-slug .creature-horn-left { left: 22%; transform: rotate(-18deg); }
+.creature-body--neon-slug .creature-horn-right { left: 34%; right: auto; transform: rotate(14deg); }
+.creature-body--neon-slug .creature-tentacle { display: none; }
+.creature-body--neon-slug .creature-part-one {
+  display: block;
+  right: 4%;
+  bottom: 19%;
+  width: 22%;
+  height: 17%;
+  border-radius: 999px;
+  opacity: 0.82;
+}
+
+.creature-body--floating-puff .creature-body {
+  inset: 22% 18% 20%;
+  border-radius: 58% 42% 56% 44% / 46% 58% 42% 54%;
+  clip-path: none;
+  transform: none;
+}
+
+.creature-body--floating-puff .creature-part {
+  display: block;
+  border-radius: 50%;
+  opacity: 0.9;
+}
+.creature-body--floating-puff .creature-part-one { left: 12%; top: 34%; width: 24%; height: 24%; }
+.creature-body--floating-puff .creature-part-two { right: 12%; top: 30%; width: 22%; height: 22%; }
+.creature-body--floating-puff .creature-part-three { left: 34%; bottom: 13%; width: 20%; height: 18%; }
+.creature-body--floating-puff .creature-eye { top: 39%; width: 13%; }
+.creature-body--floating-puff .creature-horn,
+.creature-body--floating-puff .creature-tentacle { display: none; }
+.creature-body--floating-puff .creature-aura { inset: 8%; filter: blur(24px); }
+
+.creature-body--tiny-reactor-pet .creature-body,
+.creature-body--baby-reactor-core .creature-body {
+  inset: 18% 22% 24%;
+  border-radius: 50%;
+  clip-path: none;
+  transform: none;
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 8%, var(--eye) 9% 22%, transparent 23%),
+    radial-gradient(circle, transparent 37%, rgba(5, 7, 19, 0.32) 38% 48%, transparent 49%),
+    linear-gradient(145deg, var(--body), color-mix(in srgb, var(--accent), var(--body) 42%));
+}
+
+.creature-body--tiny-reactor-pet .creature-eye,
+.creature-body--baby-reactor-core .creature-eye,
+.creature-body--tiny-reactor-pet .creature-mouth,
+.creature-body--baby-reactor-core .creature-mouth { display: none; }
+.creature-body--tiny-reactor-pet .creature-part,
+.creature-body--baby-reactor-core .creature-part {
+  width: 10%;
+  height: 24%;
+  border-radius: 999px;
+}
+.creature-body--tiny-reactor-pet .creature-part-one,
+.creature-body--baby-reactor-core .creature-part-one { display: block; left: 28%; bottom: 18%; transform: rotate(28deg); }
+.creature-body--tiny-reactor-pet .creature-part-two,
+.creature-body--baby-reactor-core .creature-part-two { display: block; left: 45%; bottom: 12%; }
+.creature-body--tiny-reactor-pet .creature-part-three,
+.creature-body--baby-reactor-core .creature-part-three { display: block; right: 28%; bottom: 18%; transform: rotate(-28deg); }
+.creature-body--baby-reactor-core .creature-part-four {
+  display: block;
+  left: 14%;
+  top: 13%;
+  width: 72%;
+  height: 72%;
+  border: 3px solid color-mix(in srgb, var(--glow), transparent 22%);
+  border-left-color: transparent;
+  border-radius: 50%;
+  background: transparent;
+}
+.creature-body--tiny-reactor-pet .creature-horn,
+.creature-body--baby-reactor-core .creature-horn,
+.creature-body--tiny-reactor-pet .creature-tentacle,
+.creature-body--baby-reactor-core .creature-tentacle { display: none; }
+
+.creature-body--crystal-bunny-blob .creature-body {
+  inset: 26% 18% 14%;
+  border-radius: 52% 48% 46% 54% / 48% 52% 48% 52%;
+  clip-path: none;
+  transform: none;
+}
+
+.creature-body--crystal-bunny-blob .creature-horn {
+  top: 4%;
+  width: 18%;
+  height: 36%;
+  border-radius: 999px 999px 30% 30%;
+  clip-path: none;
+}
+.creature-body--crystal-bunny-blob .creature-horn-left { left: 28%; transform: rotate(-12deg); }
+.creature-body--crystal-bunny-blob .creature-horn-right { right: 28%; transform: rotate(12deg); }
+.creature-body--crystal-bunny-blob .creature-part {
+  display: block;
+  width: 15%;
+  height: 18%;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.creature-body--crystal-bunny-blob .creature-part-one { left: 16%; top: 32%; transform: rotate(-44deg); }
+.creature-body--crystal-bunny-blob .creature-part-two { right: 16%; top: 34%; transform: rotate(44deg); }
+.creature-body--crystal-bunny-blob .creature-tentacle { display: none; }
+
+.creature-body--spiral-floater .creature-body {
+  inset: 22%;
+  border-radius: 50%;
+  clip-path: none;
+  transform: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--eye) 0 12%, transparent 13%),
+    conic-gradient(from 0deg, var(--body), var(--accent), var(--glow), var(--body));
+}
+
+.creature-body--spiral-floater .creature-eye,
+.creature-body--spiral-floater .creature-mouth,
+.creature-body--spiral-floater .creature-horn,
+.creature-body--spiral-floater .creature-tentacle { display: none; }
+.creature-body--spiral-floater .creature-part-one {
+  display: block;
+  left: 11%;
+  top: 11%;
+  width: 78%;
+  height: 78%;
+  border: 4px solid color-mix(in srgb, var(--accent), white 10%);
+  border-left-color: transparent;
+  border-radius: 50%;
+  background: transparent;
+}
+.creature-body--spiral-floater .creature-part-two {
+  display: block;
+  left: 2%;
+  top: 44%;
+  width: 18%;
+  height: 18%;
+  border-radius: 50%;
+}
+.creature-body--spiral-floater .creature-part-three {
+  display: block;
+  right: 2%;
+  top: 38%;
+  width: 14%;
+  height: 14%;
+  border-radius: 50%;
+}
+
+.creature-body--antenna-creature .creature-body {
+  inset: 20% 22% 16%;
+  border-radius: 48% 52% 46% 54% / 58% 58% 42% 42%;
+  clip-path: none;
+  transform: none;
+}
+
+.creature-body--antenna-creature .creature-eye { top: 38%; width: 14%; }
+.creature-body--antenna-creature .creature-horn {
+  top: 1%;
+  width: 4%;
+  height: 34%;
+  border-radius: 999px;
+  clip-path: none;
+}
+.creature-body--antenna-creature .creature-horn-left { left: 34%; transform: rotate(-24deg); }
+.creature-body--antenna-creature .creature-horn-right { right: 34%; transform: rotate(24deg); }
+.creature-body--antenna-creature .creature-part-one,
+.creature-body--antenna-creature .creature-part-two {
+  display: block;
+  top: 0;
+  width: 11%;
+  height: 11%;
+  border-radius: 50%;
+}
+.creature-body--antenna-creature .creature-part-one { left: 27%; }
+.creature-body--antenna-creature .creature-part-two { right: 27%; }
+.creature-body--antenna-creature .creature-tentacle { bottom: 8%; height: 16%; width: 8%; }
+
+.creature-body--plasma-tadpole .creature-body {
+  inset: 24% 28% 28% 12%;
+  border-radius: 60% 40% 52% 48% / 48% 60% 40% 52%;
+  clip-path: none;
+  transform: rotate(-8deg);
+}
+
+.creature-body--plasma-tadpole .creature-eye { top: 36%; width: 15%; }
+.creature-body--plasma-tadpole .creature-eye-left { left: 34%; }
+.creature-body--plasma-tadpole .creature-eye-right { right: 36%; }
+.creature-body--plasma-tadpole .creature-part-one {
+  display: block;
+  right: 5%;
+  top: 48%;
+  width: 42%;
+  height: 14%;
+  border-radius: 999px;
+  transform: rotate(14deg);
+}
+.creature-body--plasma-tadpole .creature-part-two {
+  display: block;
+  right: 0;
+  top: 42%;
+  width: 20%;
+  height: 18%;
+  border-radius: 50%;
+  opacity: 0.75;
+}
+.creature-body--plasma-tadpole .creature-horn,
+.creature-body--plasma-tadpole .creature-tentacle { display: none; }
+
+.creature-body--halo-jellyfish .creature-body {
+  inset: 18% 16% 44%;
+  border-radius: 58% 42% 46% 54% / 70% 70% 30% 30%;
+  clip-path: none;
+  transform: none;
+}
+
+.creature-body--halo-jellyfish .creature-eye { top: 32%; width: 13%; }
+.creature-body--halo-jellyfish .creature-horn { display: none; }
+.creature-body--halo-jellyfish .creature-part {
+  display: block;
+  top: 48%;
+  width: 7%;
+  height: 36%;
+  border-radius: 999px;
+}
+.creature-body--halo-jellyfish .creature-part-one { left: 30%; transform: rotate(9deg); }
+.creature-body--halo-jellyfish .creature-part-two { left: 45%; height: 42%; }
+.creature-body--halo-jellyfish .creature-part-three { right: 30%; transform: rotate(-9deg); }
+.creature-body--halo-jellyfish .creature-part-four {
+  left: 14%;
+  top: 6%;
+  width: 72%;
+  height: 36%;
+  border: 3px solid color-mix(in srgb, var(--accent), white 12%);
+  border-radius: 50%;
+  background: transparent;
+}
+.creature-body--halo-jellyfish .creature-tentacle { display: none; }
+
+.creature-body--sleepy-biomech-orb .creature-body {
+  inset: 19%;
+  border-radius: 50%;
+  clip-path: none;
+  transform: none;
+  background:
+    linear-gradient(90deg, transparent 22%, rgba(5, 7, 19, 0.34) 23% 77%, transparent 78%),
+    var(--cute-face),
+    linear-gradient(145deg, var(--body), color-mix(in srgb, var(--body), #050713 30%));
+}
+
+.creature-body--sleepy-biomech-orb .creature-eye {
+  top: 42%;
+  height: 5%;
+  aspect-ratio: 2.4;
+  border-radius: 999px;
+}
+.creature-body--sleepy-biomech-orb .creature-mouth { bottom: 34%; opacity: 0.5; }
+.creature-body--sleepy-biomech-orb .creature-horn,
+.creature-body--sleepy-biomech-orb .creature-tentacle { display: none; }
+.creature-body--sleepy-biomech-orb .creature-part-one {
+  display: block;
+  left: 13%;
+  top: 13%;
+  width: 74%;
+  height: 74%;
+  border: 3px solid color-mix(in srgb, var(--glow), transparent 18%);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.creature-body--prism-hopper .creature-body {
+  inset: 22% 24% 26%;
+  border-radius: 22%;
+  clip-path: polygon(50% 0, 92% 32%, 80% 88%, 50% 100%, 20% 88%, 8% 32%);
+  transform: none;
+}
+
+.creature-body--prism-hopper .creature-eye { top: 42%; width: 12%; border-radius: 28%; transform: rotate(45deg); }
+.creature-body--prism-hopper .creature-horn { display: none; }
+.creature-body--prism-hopper .creature-part {
+  display: block;
+  width: 11%;
+  height: 24%;
+  border-radius: 999px;
+  transform-origin: top center;
+}
+.creature-body--prism-hopper .creature-part-one { left: 30%; bottom: 10%; transform: rotate(18deg); }
+.creature-body--prism-hopper .creature-part-two { right: 30%; bottom: 10%; transform: rotate(-18deg); }
+.creature-body--prism-hopper .creature-part-three { left: 10%; top: 28%; width: 13%; height: 13%; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); border-radius: 0; }
+.creature-body--prism-hopper .creature-part-four { right: 10%; top: 32%; width: 13%; height: 13%; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); border-radius: 0; }
+.creature-body--prism-hopper .creature-tentacle { display: none; }
+
+.creature-body--star-parasite .creature-body {
+  inset: 24% 24% 20%;
+  border-radius: 50%;
+  clip-path: none;
+  transform: none;
+}
+
+.creature-body--star-parasite .creature-eye-left { left: 43%; width: 15%; }
+.creature-body--star-parasite .creature-eye-right { display: none; }
+.creature-body--star-parasite .creature-part {
+  display: block;
+  width: 18%;
+  height: 22%;
+  border-radius: 50% 50% 35% 35%;
+  clip-path: polygon(50% 0, 66% 36%, 100% 50%, 66% 64%, 50% 100%, 34% 64%, 0 50%, 34% 36%);
+}
+.creature-body--star-parasite .creature-part-one { left: 40%; top: 4%; }
+.creature-body--star-parasite .creature-part-two { left: 12%; top: 34%; }
+.creature-body--star-parasite .creature-part-three { right: 12%; top: 34%; }
+.creature-body--star-parasite .creature-part-four { left: 40%; bottom: 2%; }
+.creature-body--star-parasite .creature-horn,
+.creature-body--star-parasite .creature-tentacle { display: none; }
+
+.creature-body--quantum-bean .creature-body {
+  inset: 24% 16% 18%;
+  border-radius: 68% 32% 62% 38% / 46% 62% 38% 54%;
+  clip-path: none;
+  transform: rotate(-7deg);
+}
+
+.creature-body--quantum-bean .creature-eye { top: 36%; width: 14%; }
+.creature-body--quantum-bean .creature-eye-left { left: 36%; }
+.creature-body--quantum-bean .creature-eye-right { right: 27%; }
+.creature-body--quantum-bean .creature-horn { display: none; }
+.creature-body--quantum-bean .creature-part-one,
+.creature-body--quantum-bean .creature-part-two {
+  display: block;
+  width: 13%;
+  height: 13%;
+  border-radius: 50%;
+  opacity: 0.86;
+}
+.creature-body--quantum-bean .creature-part-one { left: 15%; top: 26%; }
+.creature-body--quantum-bean .creature-part-two { right: 10%; bottom: 21%; }
+.creature-body--quantum-bean .creature-tentacle { bottom: 9%; height: 14%; width: 8%; opacity: 0.62; }
+
+.creature-body--neon-axolotl-like-organism .creature-body {
+  inset: 25% 18% 23%;
+  border-radius: 62% 38% 46% 54% / 52% 62% 38% 48%;
+  clip-path: none;
+  transform: none;
+}
+
+.creature-body--neon-axolotl-like-organism .creature-eye { top: 36%; width: 13%; }
+.creature-body--neon-axolotl-like-organism .creature-part {
+  display: block;
+  width: 16%;
+  height: 24%;
+  border-radius: 999px;
+}
+.creature-body--neon-axolotl-like-organism .creature-part-one { left: 5%; top: 30%; transform: rotate(-52deg); }
+.creature-body--neon-axolotl-like-organism .creature-part-two { left: 10%; top: 48%; transform: rotate(-24deg); }
+.creature-body--neon-axolotl-like-organism .creature-part-three { right: 5%; top: 30%; transform: rotate(52deg); }
+.creature-body--neon-axolotl-like-organism .creature-part-four { right: 10%; top: 48%; transform: rotate(24deg); }
+.creature-body--neon-axolotl-like-organism .creature-horn,
+.creature-body--neon-axolotl-like-organism .creature-tentacle { display: none; }
+
+.creature-legendary.creature-body--crystal-bunny-blob .creature-part,
+.creature-legendary.creature-body--star-parasite .creature-part,
+.creature-mythic .creature-part,
+.creature-secret .creature-part {
+  box-shadow: 0 0 24px var(--glow), inset 0 -10px 18px rgba(5, 7, 19, 0.18);
+}
+
+.creature-mythic .creature-body {
+  background:
+    radial-gradient(circle at 36% 24%, rgba(255, 255, 255, 0.78), transparent 13%),
+    radial-gradient(circle at 70% 70%, color-mix(in srgb, var(--accent), white 8%), transparent 20%),
+    linear-gradient(135deg, var(--body), var(--accent), var(--glow), var(--body));
+  background-size: 220% 220%;
+}
+
+.creature-secret .creature-body {
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.86), transparent 13%),
+    radial-gradient(circle at 75% 72%, var(--accent), transparent 18%),
+    linear-gradient(135deg, #ffffff, var(--body), var(--accent), var(--glow), #ffffff);
+  background-size: 260% 260%;
+  box-shadow:
+    2px 0 0 rgba(255, 79, 216, 0.68),
+    -2px 0 0 rgba(29, 247, 255, 0.68),
+    0 0 34px rgba(255, 255, 255, 0.55);
+}
+
+@keyframes mascotBob {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt)); }
+  50% { transform: translateY(-5%) rotate(calc(var(--tilt) * -0.25)); }
+}
+
+@keyframes mascotWobble {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt)) scale(1); }
+  50% { transform: translateY(-3%) rotate(calc(var(--tilt) * 0.45)) scale(1.025, 0.985); }
+}
+
+@keyframes mascotPulse {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt)) scale(1); }
+  50% { transform: translateY(-4%) rotate(var(--tilt)) scale(1.045); }
+}
+
+@keyframes mascotBlinkFloat {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt)); }
+  50% { transform: translateY(-4%) rotate(calc(var(--tilt) * -0.4)); }
 }
 
 .reveal-fast {

@@ -2,6 +2,7 @@ import {
   ACHIEVEMENTS,
   AURA_STYLES,
   BODY_SHAPES,
+  CREATURE_ARCHETYPE_ALIASES,
   CREATURE_ARCHETYPES,
   DAILY_MISSION_POOL,
   DEV_SAVE_RESET_VERSION,
@@ -118,9 +119,18 @@ const normalizeVisualDna = (value: unknown, fallbackSeed = 0): CreatureVisualDna
   const record = isRecord(value) ? value : {};
   const pick = (items: string[], raw: unknown, offset: number) =>
     typeof raw === "string" && items.includes(raw) ? raw : items[(fallbackSeed + offset) % items.length];
+  const pickArchetype = (raw: unknown) => {
+    if (typeof raw === "string") {
+      const normalized = CREATURE_ARCHETYPE_ALIASES[raw] ?? raw;
+      if (CREATURE_ARCHETYPES.includes(normalized)) {
+        return normalized;
+      }
+    }
+    return CREATURE_ARCHETYPES[(fallbackSeed + 6) % CREATURE_ARCHETYPES.length];
+  };
 
   return {
-    archetype: pick(CREATURE_ARCHETYPES, record.archetype, 6),
+    archetype: pickArchetype(record.archetype),
     bodyShape: pick(BODY_SHAPES, record.bodyShape, 0),
     eyeType: pick(EYE_TYPES, record.eyeType, 1),
     hornType: pick(HORN_TYPES, record.hornType, 2),
