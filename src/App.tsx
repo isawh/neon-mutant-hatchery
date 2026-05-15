@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
+  CREATURE_ARCHETYPES,
   DEV_SAVE_RESET_VERSION,
   CREATURE_ARCHETYPE_LABELS,
   DAILY_LOGIN_REWARDS,
@@ -293,12 +294,13 @@ function CreatureVisual({
     patternStyle: "spots",
     mutationEffect: "spark",
   };
+  const archetype = visualDna.archetype || "orb";
+  const bodyClass = `creature-body--${archetype}`;
 
   return (
     <div
-      className={`creature-visual creature-${creature.rarity.toLowerCase()} body-${visualDna.bodyShape} eyes-${visualDna.eyeType} horns-${visualDna.hornType} aura-${visualDna.auraStyle} pattern-${visualDna.patternStyle} mutation-${visualDna.mutationEffect} ${
-        visualDna.archetype ? `archetype-${visualDna.archetype}` : "archetype-orb"
-      } ${large ? "creature-visual-large" : ""
+      className={`creature-visual ${bodyClass} creature-${creature.rarity.toLowerCase()} body-${visualDna.bodyShape} eyes-${visualDna.eyeType} horns-${visualDna.hornType} aura-${visualDna.auraStyle} pattern-${visualDna.patternStyle} mutation-${visualDna.mutationEffect} archetype-${archetype} ${
+        large ? "creature-visual-large" : ""
       } ${reveal ? getRevealClass(creature.rarity) : ""}`}
       style={
         {
@@ -317,6 +319,14 @@ function CreatureVisual({
         <span />
         <span />
         <span />
+      </div>
+      <div className="creature-template-parts" aria-hidden="true">
+        <span className="creature-part creature-part-one" />
+        <span className="creature-part creature-part-two" />
+        <span className="creature-part creature-part-three" />
+        <span className="creature-part creature-part-four" />
+        <span className="creature-part creature-part-five" />
+        <span className="creature-part creature-part-six" />
       </div>
       <div className="creature-horn creature-horn-left" />
       <div className="creature-horn creature-horn-right" />
@@ -579,6 +589,53 @@ export default function App() {
         return b.progress / b.target - a.progress / a.target;
       }),
     [progressionState.achievements],
+  );
+  const archetypePreviewCreatures = useMemo<Creature[]>(
+    () =>
+      CREATURE_ARCHETYPES.map((archetype, index) => {
+        const previewRarity = (
+          index >= 11
+            ? "Secret"
+            : index >= 9
+              ? "Mythic"
+              : index >= 6
+                ? "Legendary"
+                : index >= 3
+                  ? "Epic"
+                  : "Rare"
+        ) as Rarity;
+        const colors = [
+          { body: "#20f7ff", accent: "#ff3df2", glow: "#20f7ff", eye: "#f7fbff" },
+          { body: "#8dff68", accent: "#1df7ff", glow: "#76ffb4", eye: "#050713" },
+          { body: "#ffb938", accent: "#ff3df2", glow: "#ffc85a", eye: "#f7fbff" },
+          { body: "#b66cff", accent: "#20f7ff", glow: "#b66cff", eye: "#ffffff" },
+        ][index % 4];
+
+        return {
+          id: `preview-${archetype}`,
+          name: CREATURE_ARCHETYPE_LABELS[archetype] ?? archetype,
+          rarity: previewRarity,
+          generation: 1,
+          level: 1,
+          incomePerMinute: 8 + index,
+          traits: [],
+          passiveTraits: [],
+          powerScore: 120 + index * 11,
+          isNew: false,
+          colors,
+          visualDna: {
+            archetype,
+            bodyShape: ["orb", "spindle", "slug", "crystal", "asym", "poly"][index % 6],
+            eyeType: ["round", "mono", "ring", "diamond", "visor", "glitch"][index % 6],
+            hornType: ["none", "antenna", "crystal", "spikes", "halo", "forked"][index % 6],
+            auraStyle: ["soft", "mist", "radial", "flare", "halo", "glitch"][index % 6],
+            patternStyle: ["none", "rings", "circuit", "cracks", "veins", "stars"][index % 6],
+            mutationEffect: ["spark", "orbit", "scan", "shimmer", "ripple", "glitch"][index % 6],
+          },
+          createdAt: 0,
+        };
+      }),
+    [],
   );
   const unclaimedAchievementCount = visibleAchievements.filter(
     (achievement) => achievement.progress >= achievement.target && !achievement.claimed,
@@ -2276,6 +2333,14 @@ export default function App() {
                 <StatPill label="Referral" value={backendReferralStats?.referralCode ?? state.referralCode ?? "Pending"} />
                 <StatPill label="Reset ver" value={DEV_SAVE_RESET_VERSION} />
                 <StatPill label="Stored ver" value={storedDevResetVersion || "None"} />
+              </div>
+              <div className="archetype-preview-grid" aria-label="Creature body class preview">
+                {archetypePreviewCreatures.map((previewCreature) => (
+                  <div className="archetype-preview-card" key={previewCreature.id}>
+                    <CreatureVisual creature={previewCreature} />
+                    <span>{CREATURE_ARCHETYPE_LABELS[previewCreature.visualDna.archetype] ?? "Unknown"}</span>
+                  </div>
+                ))}
               </div>
               <button
                 className="mini-button"
